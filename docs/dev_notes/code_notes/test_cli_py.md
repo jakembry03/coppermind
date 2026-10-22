@@ -1,0 +1,1 @@
+capsys: A pytest **fixture**: you name it as a parameter, and pytest hands your test an object that captures everything printed to stdout and stderr. readouterr() returns what was captured so you can assert on it. This pattern is how you'll test the whole CLI without a human typing.

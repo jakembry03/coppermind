@@ -1,0 +1,22 @@
+{
+  "id": "chatcmpl-770",
+  "object": "chat.completion",
+  "created": 1792690288,
+  "model": "qwen3:4b-instruct",
+  "system_fingerprint": "fp_ollama",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "The capital of Spain is Madrid."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 20,
+    "completion_tokens": 8,
+    "total_tokens": 28
+  }
+}

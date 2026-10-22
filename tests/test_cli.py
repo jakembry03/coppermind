@@ -1,5 +1,6 @@
 from coppermind.cli import GREETING, main
 
+
 def test_main_prints_greeting_and_succeeds(capsys):
     exit_code = main()
     captured = capsys.readouterr()
