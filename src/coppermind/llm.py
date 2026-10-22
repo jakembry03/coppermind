@@ -14,8 +14,10 @@ from coppermind.config import Settings, load_settings
 
 Message = dict[str, Any]
 
+
 class LLMError(Exception):
     """The model server couldn't be reached or returned something unusable."""
+
 
 def chat(
     messages: list[Message],
@@ -24,7 +26,7 @@ def chat(
 ) -> Message:
     """
     Send a conversation to the model and return its reply message.
-    
+
     The reply has the same shape as the messages sent in, e.g.
     {"role": "assistant", "content": "..."}, so callers can append it
     straight to the conversation.
@@ -50,8 +52,7 @@ def chat(
         ) from exc
     except httpx.HTTPStatusError as exc:
         raise LLMError(
-            f"The model server returned HTTP {exc.response.status_code}: "
-            f"{exc.response.text[:200]}"
+            f"The model server returned HTTP {exc.response.status_code}: {exc.response.text[:200]}"
         ) from exc
 
     try:

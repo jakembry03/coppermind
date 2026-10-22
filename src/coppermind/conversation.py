@@ -16,6 +16,7 @@ def load_system_prompt() -> str:
     """Read the system prompt that ships inside the coppermind package."""
     return (files("coppermind") / "prompts" / "system.md").read_text(encoding="utf-8")
 
+
 class Conversation:
     """The running message history for one chat session."""
 
@@ -32,7 +33,7 @@ class Conversation:
     def send(self, text: str) -> str:
         """
         Add the user's message, get Copper's reply, record it, and return its text.
-        
+
         If the call fails for any reason (server down, Ctrl + C), the user's message
         is removed again so the history never hsa a question without an answer.
         """
@@ -44,4 +45,3 @@ class Conversation:
             raise
         self.messages.append(reply)
         return reply.get("content") or ""
-    

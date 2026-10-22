@@ -93,6 +93,7 @@ def test_model_errors_are_printed_and_repl_keeps_going(monkeypatch, capsys):
     assert "Error: Is Ollama running?" in capsys.readouterr().out
     assert exit_code == 0
 
+
 def use_fake_conversation(monkeypatch, fake):
     """Make main() use our fake instead of building a real Conversation."""
     monkeypatch.setattr(cli, "Conversation", lambda: fake)

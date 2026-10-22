@@ -4,6 +4,7 @@ Everything the user types and sees goes through this module. It should
 stay thin: read input, call into the core, display results. No agent
 logic lives here.
 """
+
 import argparse
 import sys
 from importlib.metadata import version
@@ -18,6 +19,7 @@ QUIT_COMMANDS = {"/quit", "/exit"}
 EXIT_OK = 0
 EXIT_ERROR = 1
 EXIT_INTERRUPTED = 130
+
 
 def build_parser() -> argparse.ArgumentParser:
     """Define the command-line options for `copper`."""
@@ -54,6 +56,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print(GREETING)
     return repl(conversation)
+
 
 def one_shot(conversation: Conversation, text: str) -> int:
     """Send a single message, print the reply, and return the exit code."""

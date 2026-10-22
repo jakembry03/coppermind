@@ -7,7 +7,7 @@ name = "coppermind"
 version = "0.1.0"
 description = "Copper: A personal AI agent that runs on self-hosted models."
 readme = "README.md"
-requies-python = ">=3.11"
+requires-python = ">=3.11"
 dependencies = ["httpx"]
 
 [project.optional-dependencies]

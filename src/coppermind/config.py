@@ -9,11 +9,13 @@ DEFAULT_BASE_URL = "http://localhost:11434/v1"
 DEFAULT_MODEL = "qwen3:4b-instruct"
 DEFAULT_TIMEOUT_SECONDS = 120.0
 
+
 @dataclass(frozen=True)
 class Settings:
     base_url: str
     model: str
     timeout: float
+
 
 def load_settings() -> Settings:
     """Build settings from COPPER_* environment variables, falling back to defaults."""

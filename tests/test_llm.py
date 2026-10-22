@@ -7,6 +7,7 @@ from coppermind.config import Settings
 TEST_SETTINGS = Settings(base_url="http://test-server/v1", model="test-model", timeout=5.0)
 USER_MESSAGE = [{"role": "user", "content": "What is the capital of Spain?"}]
 
+
 def fake_post_returning(status_code, body, captured=None):
     """Build a stand-in for httpx.post that returns a canned response."""
 
@@ -18,6 +19,7 @@ def fake_post_returning(status_code, body, captured=None):
 
     return fake_post
 
+
 def test_chat_returns_assistant_message(monkeypatch):
     body = {"choices": [{"message": {"role": "assistant", "content": "Madrid."}}]}
     monkeypatch.setattr(llm.httpx, "post", fake_post_returning(200, body))
@@ -25,6 +27,7 @@ def test_chat_returns_assistant_message(monkeypatch):
     reply = llm.chat(USER_MESSAGE, settings=TEST_SETTINGS)
 
     assert reply == {"role": "assistant", "content": "Madrid."}
+
 
 def test_chat_sends_model_and_messages_to_the_right_url(monkeypatch):
     captured = {}
@@ -48,9 +51,7 @@ def test_chat_explains_when_server_is_down(monkeypatch):
 
 
 def test_chat_reports_http_errors(monkeypatch):
-    monkeypatch.setattr(
-        llm.httpx, "post", fake_post_returning(404, {"error": "model not found"})
-    )
+    monkeypatch.setattr(llm.httpx, "post", fake_post_returning(404, {"error": "model not found"}))
 
     with pytest.raises(llm.LLMError, match="HTTP 404"):
         llm.chat(USER_MESSAGE, settings=TEST_SETTINGS)
