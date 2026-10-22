@@ -1,3 +1,5 @@
+import pytest
+
 from coppermind import cli
 from coppermind.llm import LLMError
 
@@ -38,7 +40,7 @@ def test_main_greets_then_quits(monkeypatch, capsys):
     monkeypatch.setattr(cli, "Conversation", FakeConversation)
     feed_input(monkeypatch, ["/quit"])
 
-    exit_code = cli.main()
+    exit_code = cli.main([])
 
     assert cli.GREETING in capsys.readouterr().out
     assert exit_code == 0
@@ -90,3 +92,57 @@ def test_model_errors_are_printed_and_repl_keeps_going(monkeypatch, capsys):
 
     assert "Error: Is Ollama running?" in capsys.readouterr().out
     assert exit_code == 0
+
+def use_fake_conversation(monkeypatch, fake):
+    """Make main() use our fake instead of building a real Conversation."""
+    monkeypatch.setattr(cli, "Conversation", lambda: fake)
+
+
+def test_one_shot_prints_only_the_reply(monkeypatch, capsys):
+    fake = FakeConversation(replies=["The capital of Spain is Madrid."])
+    use_fake_conversation(monkeypatch, fake)
+
+    exit_code = cli.main(["-p", "What is the capital of Spain?"])
+
+    output = capsys.readouterr().out
+    assert output.strip() == "The capital of Spain is Madrid."
+    assert cli.GREETING not in output
+    assert fake.sent == ["What is the capital of Spain?"]
+    assert exit_code == 0
+
+
+def test_long_prompt_flag_works(monkeypatch):
+    fake = FakeConversation(replies=["Madrid."])
+    use_fake_conversation(monkeypatch, fake)
+
+    cli.main(["--prompt", "Capital of Spain?"])
+
+    assert fake.sent == ["Capital of Spain?"]
+
+
+def test_one_shot_error_goes_to_stderr_with_exit_code_1(monkeypatch, capsys):
+    use_fake_conversation(monkeypatch, FakeConversation(error=LLMError("Is Ollama running?")))
+
+    exit_code = cli.main(["-p", "hello"])
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "Is Ollama running?" in captured.err
+    assert exit_code == 1
+
+
+def test_empty_prompt_is_rejected(monkeypatch):
+    use_fake_conversation(monkeypatch, FakeConversation())
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["-p", "   "])
+
+    assert exit_info.value.code == 2
+
+
+def test_version_flag(capsys):
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["--version"])
+
+    assert exit_info.value.code == 0
+    assert capsys.readouterr().out.startswith("copper ")
