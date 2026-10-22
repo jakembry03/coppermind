@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+
+# Environments and secrets
+.venv/
+.env
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+
+# Copper runtime data
+sessions/
+
+# Developer Notes
+/documents/dev_notes/
