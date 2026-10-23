@@ -42,10 +42,10 @@ The capital of Spain is Madrid.
 (Inside the REPL the input prompt is `> `, not `$`, so it's obvious you're talking to Copper and not your shell.)
 
 ### M0: Repo and installable skeleton
-- [ ] README, `.gitignore` (`.venv/`, `__pycache__/`, `.env`, `sessions/`, `*.egg-info/`, `.pytest_cache/`, `.ruff_cache/`)
-- [ ] `pyproject.toml`: metadata, `requires-python >= 3.11`, `copper` console script, `dev` extras (pytest, ruff)
-- [ ] `src/coppermind/` package with a stub `cli.main()`
-- [ ] CLAUDE.md and PLAN.md committed
+- [x] README, `.gitignore` (`.venv/`, `__pycache__/`, `.env`, `sessions/`, `*.egg-info/`, `.pytest_cache/`, `.ruff_cache/`)
+- [x] `pyproject.toml`: metadata, `requires-python >= 3.11`, `copper` console script, `dev` extras (pytest, ruff)
+- [x] `src/coppermind/` package with a stub `cli.main()`
+- [x] CLAUDE.md and PLAN.md committed
 
 **Done when:** in a fresh venv, `pip install -e ".[dev]"` works, `copper` run from another directory prints a greeting, and `pytest` runs.
 

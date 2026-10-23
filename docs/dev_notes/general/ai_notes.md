@@ -1,0 +1,1 @@
+A large language model only has context because it reads the entire message each time, this is what causes these models to slow down because it is loading the entire conversation on every reply.
