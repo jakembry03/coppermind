@@ -1,0 +1,15 @@
+{
+  "role": "assistant",
+  "content": "",
+  "tool_calls": [
+    {
+      "id": "oNp3aHBLI5e2C5X8PE7Q9iRyzh9hkHQJ",
+      "index": 0,
+      "type": "function",
+      "function": {
+        "name": "list_files",
+        "arguments": "{}"
+      }
+    }
+  ]
+}
