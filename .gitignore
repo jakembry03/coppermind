@@ -16,5 +16,4 @@ dist/
 # Copper runtime data
 sessions/
 
-# Developer Notes
-/docs/dev_notes/**
+
