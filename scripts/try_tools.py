@@ -1,6 +1,7 @@
 """Manual check: run the tools against the sandbox notes and print the output."""
 
 from pathlib import Path
+
 from coppermind.tools import ToolError, list_files
 
 try:

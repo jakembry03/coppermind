@@ -1,5 +1,9 @@
+import sys
+
 import pytest
-from coppermind.tools import ToolError, list_files, read_file
+
+from coppermind.tools import ToolError, build_registry, list_files, read_file
+
 
 @pytest.fixture
 def notes_root(tmp_path):
@@ -69,3 +73,59 @@ def test_read_file_refuses_binary_files(notes_root):
 def test_read_file_truncates_long_files(notes_root):
     result = read_file(notes_root, "groceries.md", max_chars=4)
     assert result.startswith("eggs\n[Truncated")
+
+
+def test_registry_keys_match_tool_names(notes_root):
+    registry = build_registry(notes_root)
+    assert set(registry) == {"list_files", "read_file"}
+    for name, tool in registry.items():
+        assert tool.schema()["function"]["name"] == name
+
+
+def test_registry_schemas_have_openai_shape(notes_root):
+    for tool in build_registry(notes_root).values():
+        schema = tool.schema()
+        assert schema["type"] == "function"
+        assert schema["function"]["description"]
+        assert schema["function"]["parameters"]["type"] == "object"
+
+
+def test_file_tools_are_read_only(notes_root):
+    for tool in build_registry(notes_root).values():
+        assert tool.writes is False
+
+
+def test_registry_tools_run_against_the_bound_root(notes_root):
+    registry = build_registry(notes_root)
+    assert registry["list_files"].function() == "groceries.md\nideas/movie.md"
+    assert registry["read_file"].function(path="groceries.md") == "eggs\nmilk\n"
+
+
+def test_model_cannot_pass_its_own_root(notes_root, tmp_path):
+    read = build_registry(notes_root)["read_file"].function
+    with pytest.raises(TypeError):
+        read(path="secret.txt", root=tmp_path)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="backslash is only a separator on Windows")
+def test_read_file_refuses_windows_style_traversal(notes_root):
+    with pytest.raises(ToolError, match="outside"):
+        read_file(notes_root, r"..\secret.txt")
+
+
+@pytest.mark.parametrize("hidden_path", [".hidden.md", ".git/config", "ideas/.env"])
+def test_read_file_refuses_hidden_files(notes_root, hidden_path):
+    target = notes_root / hidden_path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("TOKEN=secret", encoding="utf-8")
+    with pytest.raises(ToolError, match="Hidden files"):
+        read_file(notes_root, hidden_path)
+
+
+def test_list_files_skips_symlinks_that_escape(notes_root, tmp_path):
+    try:
+        (notes_root / "sneaky.md").symlink_to(tmp_path / "secret.txt")
+    except OSError:
+        pytest.skip("creating symlinks needs Developer Mode or admin on Windows")
+
+    assert "sneaky.md" not in list_files(notes_root)

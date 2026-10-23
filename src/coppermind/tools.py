@@ -1,13 +1,30 @@
+"""
+Tools Copper can call, plus the registry the agent loop uses to find them.
+
+Each tool has two halves: the description the model reads (name, description, JSON Schema
+for its arguments) and the Python function that actually runs. The model only ever sees the
+first half; it asks for a tool by name and the agent looks it up in the registry.
+"""
+
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 MAX_CHARACTERS = 20000
+
 
 class ToolError(Exception):
     """A tool refused a request. The message is safe to show the model."""
 
 
+def _is_hidden(relative: Path) -> bool:
+    """Dotfiles and dot-folders (.env, .git/, .obsidian/) hold config and secrets, not notes."""
+    return any(part.startswith(".") for part in relative.parts)
+
+
 def list_files(root: Path) -> str:
-    """List evrey file under root as relative paths, oen per line, sorted."""
+    """List every file under root as relative paths, one per line, sorted."""
     real_root = root.resolve()
     if not real_root.is_dir():
         raise ToolError("The notes folder was not found.")
@@ -16,8 +33,12 @@ def list_files(root: Path) -> str:
     for entry in real_root.rglob("*"):
         if not entry.is_file():
             continue
+        # A symlink can live inside root but point outside it; read_file would refuse it,
+        # so don't advertise it either.
+        if not entry.resolve().is_relative_to(real_root):
+            continue
         relative = entry.relative_to(real_root)
-        if any(part.startswith(".") for part in relative.parts):
+        if _is_hidden(relative):
             continue
         found.append(relative.as_posix())
 
@@ -28,7 +49,7 @@ def list_files(root: Path) -> str:
     return "\n".join(found)
 
 
-def read_file(root, path, max_chars = MAX_CHARACTERS) -> str:
+def read_file(root: Path, path: str, max_chars: int = MAX_CHARACTERS) -> str:
     """
     Read a text file under root and return its contents.
 
@@ -41,13 +62,15 @@ def read_file(root, path, max_chars = MAX_CHARACTERS) -> str:
 
     if not target.is_relative_to(real_root):
         raise ToolError(f"Path is outside the allowed folder: {path}")
+    if _is_hidden(target.relative_to(real_root)):
+        raise ToolError(f"Hidden files can't be read: {path}")
 
     if not target.exists():
         raise ToolError(f"File not found: {path}")
     if not target.is_file():
         raise ToolError(f"Not a file: {path}")
 
-    try :
+    try:
         content = target.read_text(encoding="utf-8")
     except UnicodeDecodeError as exc:
         raise ToolError(f"Not a text file: {path}") from exc
@@ -59,12 +82,69 @@ def read_file(root, path, max_chars = MAX_CHARACTERS) -> str:
         )
 
     return content
-                
-
-    
-
-            
-    
-        
 
 
+@dataclass(frozen=True)
+class Tool:
+    """One tool: what the model is told about it, the function that runs, and whether it writes.
+
+    `writes` is checked by the approval gate (M6): any tool that changes something
+    outside Copper must be marked True so Jake is asked first.
+    """
+
+    name: str
+    description: str
+    parameters: dict[str, Any]
+    function: Callable[..., str]
+    writes: bool = False
+
+    def schema(self) -> dict[str, Any]:
+        """The tool description in the OpenAI-compatible format the model server expects."""
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.parameters,
+            },
+        }
+
+
+def build_registry(notes_root: Path) -> dict[str, Tool]:
+    """
+    Create the tools with the notes folder already bound in, keyed by name.
+
+    The root is fixed here, by Copper, so it never appears in a schema: the model can
+    choose which file to read but never which folder it's allowed to read from. The
+    lambdas accept exactly the arguments in each schema, so any extra argument the model
+    invents (like `root` or `max_chars`) fails instead of being passed through.
+    """
+    tools = [
+        Tool(
+            name="list_files",
+            description=(
+                "List every file in the user's notes folder. Returns one relative path per line."
+            ),
+            parameters={"type": "object", "properties": {}, "required": []},
+            function=lambda: list_files(notes_root),
+        ),
+        Tool(
+            name="read_file",
+            description=(
+                "Read one text file from the user's notes folder and return its contents. "
+                "Use a path exactly as list_files returns it."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path relative to the notes folder, e.g. 'ideas/movie.md'.",
+                    }
+                },
+                "required": ["path"],
+            },
+            function=lambda path: read_file(notes_root, path),
+        ),
+    ]
+    return {tool.name: tool for tool in tools}

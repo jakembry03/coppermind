@@ -24,6 +24,6 @@ def load_settings() -> Settings:
     """Build settings from COPPER_* environment variables, falling back to defaults."""
     return Settings(
         base_url=os.environ.get("COPPER_BASE_URL", DEFAULT_BASE_URL).rstrip("/"),
-        model=os.environ.get("COPPER_MODE", DEFAULT_MODEL),
+        model=os.environ.get("COPPER_MODEL", DEFAULT_MODEL),
         timeout=float(os.environ.get("COPPER_TIMEOUT", DEFAULT_TIMEOUT_SECONDS)),
     )
