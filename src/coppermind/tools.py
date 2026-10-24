@@ -148,3 +148,7 @@ def build_registry(notes_root: Path) -> dict[str, Tool]:
         ),
     ]
     return {tool.name: tool for tool in tools}
+
+def tool_schemas(registry: dict[str, Tool]) -> list[dict[str, Any]]:
+    """Every tool's description, in the form sent to the model."""
+    return [tool.schema() for tool in registry.values()]
