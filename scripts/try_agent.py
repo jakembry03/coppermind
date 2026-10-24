@@ -23,7 +23,7 @@ print("===Answer===")
 print(answer)
 print()
 print(f"===Trace=== ({len(agent.messages)} messages) ===")
-for number, message in enumerate(agent.message):
+for number, message in enumerate(agent.messages):
     role = message["role"]
     if message.get("tool_calls"):
         for call in message["tool_calls"]:
