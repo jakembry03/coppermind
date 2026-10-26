@@ -9,8 +9,10 @@ import argparse
 import sys
 from importlib.metadata import version
 
-from coppermind.conversation import Conversation
 from coppermind.llm import LLMError
+from coppermind.agent import Agent, AgentError
+from coppermind.config import load_settings
+from coppermind.tools import build_registry
 
 GREETING = "Hi, my name is Copper. How can I help you?"
 INPUT_PROMPT = "> "
@@ -46,23 +48,24 @@ def main(argv: list[str] | None = None) -> int:
     """Entry point for the `copper` command. Returns the process exit code."""
     parser = build_parser()
     args = parser.parse_args(argv)
-    conversation = Conversation()
+    settings = load_settings()
+    agent = Agent(build_registry(settings.notes_dir), settings=settings)
 
     if args.prompt is not None:
         text = args.prompt.strip()
         if not text:
             parser.error("the prompt can't be empty")
-        return one_shot(conversation, text)
+        return one_shot(agent, text)
 
     print(GREETING)
-    return repl(conversation)
+    return repl(agent)
 
 
-def one_shot(conversation: Conversation, text: str) -> int:
+def one_shot(agent: Agent, text: str) -> int:
     """Send a single message, print the reply, and return the exit code."""
     try:
-        reply = conversation.send(text)
-    except LLMError as error:
+        reply = agent.send(text)
+    except (LLMError, AgentError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return EXIT_ERROR
     except KeyboardInterrupt:
@@ -73,7 +76,7 @@ def one_shot(conversation: Conversation, text: str) -> int:
     return EXIT_OK
 
 
-def repl(conversation: Conversation) -> int:
+def repl(agent: Agent) -> int:
     """Read-eval-print loop: read a line, send it to Copper, print the reply."""
     while True:
         try:
@@ -87,7 +90,7 @@ def repl(conversation: Conversation) -> int:
         if text in QUIT_COMMANDS:
             return 0
         if text == "/clear":
-            conversation.clear()
+            agent.clear()
             print("(conversation cleared)")
             continue
         if text.startswith("/"):
@@ -95,9 +98,9 @@ def repl(conversation: Conversation) -> int:
             continue
 
         try:
-            reply = conversation.send(text)
-        except LLMError as error:
-            print(f"Error: {error}")
+            reply = agent.send(text)
+        except (LLMError, AgentError) as error:
+            print(f"Error: {error}", file=sys.stderr)
             continue
         except KeyboardInterrupt:
             print("\n(interrupted)")

@@ -2,8 +2,9 @@ import sys
 
 import pytest
 
-from coppermind.tools import ToolError, build_registry, list_files, read_file
+from coppermind.tools import ToolError, build_registry, list_files, read_file, get_current_datetime
 
+import re
 
 @pytest.fixture
 def notes_root(tmp_path):
@@ -77,7 +78,7 @@ def test_read_file_truncates_long_files(notes_root):
 
 def test_registry_keys_match_tool_names(notes_root):
     registry = build_registry(notes_root)
-    assert set(registry) == {"list_files", "read_file"}
+    assert set(registry) == {"list_files", "read_file", "get_current_datetime"}
     for name, tool in registry.items():
         assert tool.schema()["function"]["name"] == name
 
@@ -129,3 +130,8 @@ def test_list_files_skips_symlinks_that_escape(notes_root, tmp_path):
         pytest.skip("creating symlinks needs Developer Mode or admin on Windows")
 
     assert "sneaky.md" not in list_files(notes_root)
+
+def test_get_current_datetime_format():
+    result = get_current_datetime()
+    assert re.fullmatch(r"\w+, \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \(UTC[+-]\d{4}\)", result)
+

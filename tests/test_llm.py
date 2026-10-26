@@ -1,10 +1,17 @@
 import httpx
 import pytest
 
+from pathlib import Path
+
 from coppermind import llm
 from coppermind.config import Settings
 
-TEST_SETTINGS = Settings(base_url="http://test-server/v1", model="test-model", timeout=5.0)
+TEST_SETTINGS = Settings(
+    base_url="http://localhost:11434/v1", 
+    model="qwen3:4b-instruct", 
+    timeout=5.0,
+    notes_dir=Path("sandbox/notes")
+)
 USER_MESSAGE = [{"role": "user", "content": "What is the capital of Spain?"}]
 
 
@@ -36,8 +43,8 @@ def test_chat_sends_model_and_messages_to_the_right_url(monkeypatch):
 
     llm.chat(USER_MESSAGE, settings=TEST_SETTINGS)
 
-    assert captured["url"] == "http://test-server/v1/chat/completions"
-    assert captured["json"] == {"model": "test-model", "messages": USER_MESSAGE}
+    assert captured["url"] == "http://localhost:11434/v1/chat/completions"
+    assert captured["json"] == {"model": "qwen3:4b-instruct", "messages": USER_MESSAGE}
 
 
 def test_chat_explains_when_server_is_down(monkeypatch):
