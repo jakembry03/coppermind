@@ -1,11 +1,12 @@
 import pytest
 
 from coppermind import cli
+from coppermind.agent import AgentError
 from coppermind.llm import LLMError
 
 
-class FakeConversation:
-    """Stands in for Conversation so CLI tests never touch the model."""
+class FakeAgent:
+    """Stands in for Agent so CLI tests never touch the model."""
 
     def __init__(self, replies=None, error=None):
         self.replies = list(replies or [])
@@ -24,7 +25,7 @@ class FakeConversation:
 
 
 def feed_input(monkeypatch, lines):
-    """Make input() return each line in turn, then act like Ctrl-Z/Ctrl-D (EOF)."""
+    """Make input() return each line in turn, then act like Ctrl-D / Ctrl-Z (EOF)."""
     remaining = iter(lines)
 
     def fake_input(prompt=""):
@@ -36,8 +37,13 @@ def feed_input(monkeypatch, lines):
     monkeypatch.setattr("builtins.input", fake_input)
 
 
+def use_fake_agent(monkeypatch, fake):
+    """Make main() use our fake instead of building a real Agent."""
+    monkeypatch.setattr(cli, "Agent", lambda *args, **kwargs: fake)
+
+
 def test_main_greets_then_quits(monkeypatch, capsys):
-    monkeypatch.setattr(cli, "Conversation", FakeConversation)
+    use_fake_agent(monkeypatch, FakeAgent())
     feed_input(monkeypatch, ["/quit"])
 
     exit_code = cli.main([])
@@ -46,62 +52,76 @@ def test_main_greets_then_quits(monkeypatch, capsys):
     assert exit_code == 0
 
 
+def test_main_gives_the_agent_every_tool(monkeypatch):
+    captured = {}
+
+    def fake_agent_factory(registry, **kwargs):
+        captured["registry"] = registry
+        return FakeAgent()
+
+    monkeypatch.setattr(cli, "Agent", fake_agent_factory)
+    feed_input(monkeypatch, ["/quit"])
+
+    cli.main([])
+
+    assert set(captured["registry"]) == {"list_files", "read_file", "get_current_datetime"}
+
+
 def test_repl_sends_message_and_prints_reply(monkeypatch, capsys):
-    conversation = FakeConversation(replies=["The capital of Spain is Madrid."])
+    agent = FakeAgent(replies=["The capital of Spain is Madrid."])
     feed_input(monkeypatch, ["What is the capital of Spain?"])
 
-    cli.repl(conversation)
+    cli.repl(agent)
 
-    assert conversation.sent == ["What is the capital of Spain?"]
+    assert agent.sent == ["What is the capital of Spain?"]
     assert "The capital of Spain is Madrid." in capsys.readouterr().out
 
 
 def test_repl_ignores_blank_lines(monkeypatch):
-    conversation = FakeConversation()
+    agent = FakeAgent()
     feed_input(monkeypatch, ["", "   "])
 
-    cli.repl(conversation)
+    cli.repl(agent)
 
-    assert conversation.sent == []
+    assert agent.sent == []
 
 
-def test_clear_command_clears_conversation(monkeypatch):
-    conversation = FakeConversation()
+def test_clear_command_clears_history(monkeypatch):
+    agent = FakeAgent()
     feed_input(monkeypatch, ["/clear"])
 
-    cli.repl(conversation)
+    cli.repl(agent)
 
-    assert conversation.cleared
+    assert agent.cleared
 
 
 def test_unknown_command_is_not_sent_to_model(monkeypatch, capsys):
-    conversation = FakeConversation()
+    agent = FakeAgent()
     feed_input(monkeypatch, ["/qiut"])
 
-    cli.repl(conversation)
+    cli.repl(agent)
 
-    assert conversation.sent == []
+    assert agent.sent == []
     assert "Unknown command" in capsys.readouterr().out
 
 
-def test_model_errors_are_printed_and_repl_keeps_going(monkeypatch, capsys):
-    conversation = FakeConversation(error=LLMError("Is Ollama running?"))
+@pytest.mark.parametrize(
+    "error",
+    [LLMError("Is Ollama running?"), AgentError("Copper gave up after 10 tool steps.")],
+)
+def test_repl_prints_errors_and_keeps_going(monkeypatch, capsys, error):
+    agent = FakeAgent(error=error)
     feed_input(monkeypatch, ["hello"])
 
-    exit_code = cli.repl(conversation)
+    exit_code = cli.repl(agent)
 
-    assert "Error: Is Ollama running?" in capsys.readouterr().out
+    assert f"Error: {error}" in capsys.readouterr().err
     assert exit_code == 0
 
 
-def use_fake_conversation(monkeypatch, fake):
-    """Make main() use our fake instead of building a real Conversation."""
-    monkeypatch.setattr(cli, "Conversation", lambda: fake)
-
-
 def test_one_shot_prints_only_the_reply(monkeypatch, capsys):
-    fake = FakeConversation(replies=["The capital of Spain is Madrid."])
-    use_fake_conversation(monkeypatch, fake)
+    fake = FakeAgent(replies=["The capital of Spain is Madrid."])
+    use_fake_agent(monkeypatch, fake)
 
     exit_code = cli.main(["-p", "What is the capital of Spain?"])
 
@@ -113,27 +133,31 @@ def test_one_shot_prints_only_the_reply(monkeypatch, capsys):
 
 
 def test_long_prompt_flag_works(monkeypatch):
-    fake = FakeConversation(replies=["Madrid."])
-    use_fake_conversation(monkeypatch, fake)
+    fake = FakeAgent(replies=["Madrid."])
+    use_fake_agent(monkeypatch, fake)
 
     cli.main(["--prompt", "Capital of Spain?"])
 
     assert fake.sent == ["Capital of Spain?"]
 
 
-def test_one_shot_error_goes_to_stderr_with_exit_code_1(monkeypatch, capsys):
-    use_fake_conversation(monkeypatch, FakeConversation(error=LLMError("Is Ollama running?")))
+@pytest.mark.parametrize(
+    "error",
+    [LLMError("Is Ollama running?"), AgentError("Copper gave up after 10 tool steps.")],
+)
+def test_one_shot_error_goes_to_stderr_with_exit_code_1(monkeypatch, capsys, error):
+    use_fake_agent(monkeypatch, FakeAgent(error=error))
 
     exit_code = cli.main(["-p", "hello"])
 
     captured = capsys.readouterr()
     assert captured.out == ""
-    assert "Is Ollama running?" in captured.err
+    assert str(error) in captured.err
     assert exit_code == 1
 
 
 def test_empty_prompt_is_rejected(monkeypatch):
-    use_fake_conversation(monkeypatch, FakeConversation())
+    use_fake_agent(monkeypatch, FakeAgent())
 
     with pytest.raises(SystemExit) as exit_info:
         cli.main(["-p", "   "])

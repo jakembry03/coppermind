@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 DEFAULT_BASE_URL = "http://localhost:11434/v1"
-DEFAULT_MODEL = "qwen3:8b"
+DEFAULT_MODEL = "qwen3:4b-instruct"
 DEFAULT_TIMEOUT_SECONDS = 120.0
 COPPER_NOTES_DIR = "sandbox/notes"
 

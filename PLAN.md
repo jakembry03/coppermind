@@ -86,8 +86,8 @@ The capital of Spain is Madrid.
 **Done when:** both tools work when called directly and every traversal test is refused.
 
 ### M5: The agent loop `[jake-writes]`
-- [ ] `agent.py`: send messages plus tool schemas; if the reply has tool calls, run them, append results as tool messages, and call again; repeat until a plain-text answer
-- [ ] Max-iterations limit; unknown tools and bad arguments return an error to the model as a tool result instead of crashing
+- [x] `agent.py`: send messages plus tool schemas; if the reply has tool calls, run them, append results as tool messages, and call again; repeat until a plain-text answer
+- [x] Max-iterations limit; unknown tools and bad arguments return an error to the model as a tool result instead of crashing
 - [ ] The agent yields events (`text`, `tool_call`, `tool_result`, `error`) for interfaces to render
 - [ ] CLI calls the agent instead of `llm.py` and prints each tool call
 

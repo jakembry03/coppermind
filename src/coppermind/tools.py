@@ -10,6 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from datetime import datetime
 
 MAX_CHARACTERS = 20000
 
@@ -17,6 +18,19 @@ MAX_CHARACTERS = 20000
 class ToolError(Exception):
     """A tool refused a request. The message is safe to show the model."""
 
+
+def get_current_datetime() -> str:
+    """
+    Returns the current local date and time of the system.
+
+    This function takes no arguments and returns a string
+    formatted as 'YYYY-MM-DD HH:MM:SS' and the UTC offset..
+
+    Returns:
+        str: The current date and time.
+    """
+    now = datetime.now().astimezone()
+    return now.strftime("%A, %Y-%m-%d %H:%M:%S (UTC%z)")
 
 def _is_hidden(relative: Path) -> bool:
     """Dotfiles and dot-folders (.env, .git/, .obsidian/) hold config and secrets, not notes."""
@@ -146,6 +160,18 @@ def build_registry(notes_root: Path) -> dict[str, Tool]:
             },
             function=lambda path: read_file(notes_root, path),
         ),
+        Tool(
+            name="get_current_datetime",
+            description=(
+                "Returns the current local date and time of the system formatted as 'YYYY-MM-DD HH:MM:SS'."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+            function=get_current_datetime,
+        )
     ]
     return {tool.name: tool for tool in tools}
 
