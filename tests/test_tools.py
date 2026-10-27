@@ -2,9 +2,11 @@ import sys
 
 import pytest
 
-from coppermind.tools import ToolError, build_registry, list_files, read_file, get_current_datetime
+from coppermind.tools import ToolError, build_registry, list_files, read_file, get_current_datetime, write_to_file
 
 import re
+
+from pathlib import Path
 
 @pytest.fixture
 def notes_root(tmp_path):
@@ -78,7 +80,7 @@ def test_read_file_truncates_long_files(notes_root):
 
 def test_registry_keys_match_tool_names(notes_root):
     registry = build_registry(notes_root)
-    assert set(registry) == {"list_files", "read_file", "get_current_datetime"}
+    assert set(registry) == {"list_files", "read_file", "get_current_datetime", "write_to_file"}
     for name, tool in registry.items():
         assert tool.schema()["function"]["name"] == name
 
@@ -134,4 +136,15 @@ def test_list_files_skips_symlinks_that_escape(notes_root, tmp_path):
 def test_get_current_datetime_format():
     result = get_current_datetime()
     assert re.fullmatch(r"\w+, \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \(UTC[+-]\d{4}\)", result)
+
+def test_write_file(notes_root, tmp_path):
+    file_to_write = "test_write.md"
+    content = "Hello World!"
+    expected_path = tmp_path / "notes" / "test_write.md"
+    file = write_to_file(notes_root, file_to_write, content)
+
+    assert expected_path.is_file()
+    assert expected_path.read_text(encoding="utf-8") == content
+
+    
 
