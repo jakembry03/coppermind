@@ -97,7 +97,7 @@ def read_file(root: Path, path: str, max_chars: int = MAX_CHARACTERS) -> str:
 
     return content
 
-def write_file(root: Path, path: str, content: str) -> str:
+def write_to_file(root: Path, path: str, content: str) -> str:
     """
     Writes content passed to it to a file of a given filepath.
     If the file does not already exist it will create it.
@@ -116,10 +116,10 @@ def write_file(root: Path, path: str, content: str) -> str:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.touch()
 
-    with target.open() as file:
+    with open(target, "w", encoding="utf-8") as file:
         file.write(content)
 
-    return f"Wrote: {content} to {target}"
+    return f"Wrote: {content} to {Path(file.name).name}"
 
 
 
@@ -221,7 +221,7 @@ def build_registry(notes_root: Path) -> dict[str, Tool]:
                 },
                 "required": ["path", "content"],
             },
-            function=lambda path, content: write_file(notes_root, path, content),
+            function=lambda path, content: write_to_file(notes_root, path, content),
         )
     ]
     return {tool.name: tool for tool in tools}
