@@ -97,6 +97,31 @@ def read_file(root: Path, path: str, max_chars: int = MAX_CHARACTERS) -> str:
 
     return content
 
+def write_file(root: Path, path: str, content: str) -> str:
+    """
+    Writes content passed to it to a file of a given filepath.
+    If the file does not already exist it will create it.
+    First checks whether the given path is relative to the real root,
+    raises an error if not.
+    """
+    real_root = root.resolve()
+    target = (real_root / path).resolve()
+    if not target.is_relative_to(real_root):
+        raise ToolError(f"Path is outside the allowed folder: {path}")
+
+    if _is_hidden(target.relative_to(real_root)):
+        raise ToolError("Cannot write to hidden files.")
+
+    if not target.exists():
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.touch()
+
+    with target.open() as file:
+        file.write(content)
+
+    return f"Wrote: {content} to {target}"
+
+
 
 @dataclass(frozen=True)
 class Tool:
@@ -139,7 +164,11 @@ def build_registry(notes_root: Path) -> dict[str, Tool]:
             description=(
                 "List every file in the user's notes folder. Returns one relative path per line."
             ),
-            parameters={"type": "object", "properties": {}, "required": []},
+            parameters={
+                "type": "object", 
+                "properties": {}, 
+                "required": []
+            },
             function=lambda: list_files(notes_root),
         ),
         Tool(
@@ -171,6 +200,28 @@ def build_registry(notes_root: Path) -> dict[str, Tool]:
                 "required": [],
             },
             function=get_current_datetime,
+        ),
+        Tool(
+            name="write_to_file",
+            description=(
+                "Write text to a given file path in the users notes folder. Create the file and parent folders if do not already exist."
+                "Use file path exactly how it is given by the user."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path of the file to be created. Will be relative to the notes folder. e.g. reviews/superman.md",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "Text to be written to the file."
+                    },
+                },
+                "required": ["path", "content"],
+            },
+            function=lambda path, content: write_file(notes_root, path, content),
         )
     ]
     return {tool.name: tool for tool in tools}

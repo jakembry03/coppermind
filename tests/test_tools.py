@@ -2,9 +2,11 @@ import sys
 
 import pytest
 
-from coppermind.tools import ToolError, build_registry, list_files, read_file, get_current_datetime
+from coppermind.tools import ToolError, build_registry, list_files, read_file, get_current_datetime, write_file
 
 import re
+
+from pathlib import Path
 
 @pytest.fixture
 def notes_root(tmp_path):
@@ -134,4 +136,12 @@ def test_list_files_skips_symlinks_that_escape(notes_root, tmp_path):
 def test_get_current_datetime_format():
     result = get_current_datetime()
     assert re.fullmatch(r"\w+, \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \(UTC[+-]\d{4}\)", result)
+
+def test_write_file(notes_root):
+    file_to_write = Path("test_write.md")
+    content = "Hello World!"
+    write_file(notes_root, file_to_write, content)
+
+    assert file_to_write.exists()
+    assert file_to_write.read_text() == content
 
