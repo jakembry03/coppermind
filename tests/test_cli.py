@@ -65,7 +65,8 @@ def test_main_gives_the_agent_every_tool(monkeypatch):
     cli.main([])
 
     assert set(captured["registry"]) == {
-        "list_files", 
+        "list_files",
+        "list_folders", 
         "read_file", 
         "get_current_datetime", 
         "write_to_file", 

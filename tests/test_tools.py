@@ -5,7 +5,8 @@ import pytest
 from coppermind.tools import (
     ToolError, 
     build_registry, 
-    list_files, 
+    list_files,
+    list_folders, 
     read_file, 
     get_current_datetime, 
     write_to_file, 
@@ -23,6 +24,8 @@ def notes_root(tmp_path):
     """A fake notes folder with a nested file, a hidden file, and a file outside it."""
     root = tmp_path / "notes"
     (root / "ideas").mkdir(parents=True)
+    (root / "things").mkdir(parents=True)
+    (root / "stuff").mkdir(parents=True)
     (root / "groceries.md").write_text("eggs\nmilk\n", encoding="utf-8")
     (root / "ideas" / "movie.md").write_text("scratch notes", encoding="utf-8")
     (root / ".hidden.md").write_text("should not be listed.", encoding="utf-8")
@@ -37,6 +40,14 @@ def test_list_files_returns_sorted_relative_paths(notes_root):
 def test_list_files_refuses_a_missing_folder(tmp_path):
     with pytest.raises(ToolError, match="not found"):
         list_files(tmp_path / "does-not-exist")
+
+def test_list_folders_returns_sorted_relative_paths(notes_root):
+    assert list_folders(notes_root) == "ideas\nstuff\nthings"
+
+
+def test_list_folders_refuses_a_missing_folder(tmp_path):
+    with pytest.raises(ToolError, match="not found"):
+        list_folders(tmp_path / "does-not-exist")
 
 
 def test_read_file_returns_contents(notes_root):
@@ -91,7 +102,8 @@ def test_read_file_truncates_long_files(notes_root):
 def test_registry_keys_match_tool_names(notes_root):
     registry = build_registry(notes_root)
     assert set(registry) == {
-        "list_files", 
+        "list_files",
+        "list_folders", 
         "read_file", 
         "get_current_datetime", 
         "write_to_file", 

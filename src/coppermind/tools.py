@@ -62,6 +62,29 @@ def list_files(root: Path) -> str:
     found.sort()
     return "\n".join(found)
 
+def list_folders(root: Path) -> str:
+    """List every folder under root as relative paths, one per line, sorted."""
+    real_root = root.resolve()
+    if not real_root.is_dir():
+        raise ToolError("The notes folder was not found.")
+
+    found = []
+    for entry in real_root.rglob("*"):
+        if not entry.is_dir():
+            continue
+        if not entry.resolve().is_relative_to(real_root):
+            continue
+        relative = entry.relative_to(real_root)
+        if _is_hidden(relative):
+            continue
+        found.append(relative.as_posix())
+
+    if not found:
+        return "No files found."
+
+    found.sort()
+    return "\n".join(found)
+
 
 def read_file(root: Path, path: str, max_chars: int = MAX_CHARACTERS) -> str:
     """
@@ -233,6 +256,18 @@ def build_registry(notes_root: Path) -> dict[str, Tool]:
                 "required": []
             },
             function=lambda: list_files(notes_root),
+        ),
+        Tool(
+            name="list_folders",
+            description=(
+                "List every folder in the user's notes folder. Returns one relative path per line."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {},
+                "required": []
+            },
+            function=lambda: list_folders(notes_root),
         ),
         Tool(
             name="read_file",
