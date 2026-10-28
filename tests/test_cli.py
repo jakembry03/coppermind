@@ -64,7 +64,7 @@ def test_main_gives_the_agent_every_tool(monkeypatch):
 
     cli.main([])
 
-    assert set(captured["registry"]) == {"list_files", "read_file", "get_current_datetime", "write_to_file", "append_to_file"}
+    assert set(captured["registry"]) == {"list_files", "read_file", "get_current_datetime", "write_to_file", "append_to_file", "create_file"}
 
 
 def test_repl_sends_message_and_prints_reply(monkeypatch, capsys):

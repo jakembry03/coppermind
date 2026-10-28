@@ -143,6 +143,28 @@ def append_to_file(root: Path, path: str, content: str) -> str:
 
     return f"Wrote {content} to the end of {Path(file.name).name}"
 
+def create_file(root: Path, path: str) -> str:
+    """
+    Creates an empty file of a given file type.
+    """
+    real_root = root.resolve()
+    target = (real_root / path).resolve()
+    if not target.is_relative_to(real_root):
+        raise ToolError(f"Path is outside the allowed folder: {path}")
+
+    if _is_hidden(target.relative_to(real_root)):
+        raise ToolError("Cannot create dot files/hidden files.")
+
+    if target.exists():
+        raise ToolError("File already exists.")
+    elif not target.exists():
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.touch()
+
+    return f"Created {path}"
+    
+
+
 
 
 @dataclass(frozen=True)
@@ -266,6 +288,24 @@ def build_registry(notes_root: Path) -> dict[str, Tool]:
                 "required": ["path", "content"]
             },
             function=lambda path, content: append_to_file(notes_root, path, content),
+        ),
+        Tool(
+            name="create_file",
+            description=(
+                "Create an empty file at given location."
+                "Use location exactly as provided by the user."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path of the file to be created. Will be relative to the notes folder."
+                    },
+                },
+                "required": ["path"]
+            },
+            function=lambda path: create_file(notes_root, path),
         )
     ]
     return {tool.name: tool for tool in tools}
