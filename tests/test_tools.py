@@ -2,7 +2,17 @@ import sys
 
 import pytest
 
-from coppermind.tools import ToolError, build_registry, list_files, read_file, get_current_datetime, write_to_file, append_to_file, create_file
+from coppermind.tools import (
+    ToolError, 
+    build_registry, 
+    list_files, 
+    read_file, 
+    get_current_datetime, 
+    write_to_file, 
+    append_to_file, 
+    create_file,
+    delete_file,
+)
 
 import re
 
@@ -80,7 +90,15 @@ def test_read_file_truncates_long_files(notes_root):
 
 def test_registry_keys_match_tool_names(notes_root):
     registry = build_registry(notes_root)
-    assert set(registry) == {"list_files", "read_file", "get_current_datetime", "write_to_file", "append_to_file", "create_file"}
+    assert set(registry) == {
+        "list_files", 
+        "read_file", 
+        "get_current_datetime", 
+        "write_to_file", 
+        "append_to_file", 
+        "create_file",
+        "delete_file",
+    }
     for name, tool in registry.items():
         assert tool.schema()["function"]["name"] == name
 
@@ -163,6 +181,19 @@ def test_create_file(notes_root, tmp_path):
     _ = create_file(notes_root, file_to_create)
 
     assert expected_path.is_file()
+
+def test_delete_file(notes_root, tmp_path):
+    file_to_delete = "test_del.md"
+    _ = create_file(notes_root, file_to_delete)
+    expected_path = tmp_path / "notes" / file_to_delete
+
+    assert expected_path.is_file()
+    _ = delete_file(notes_root, file_to_delete)
+
+    assert expected_path.exists() == False
+
+
+
     
 
 

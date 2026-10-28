@@ -162,6 +162,25 @@ def create_file(root: Path, path: str) -> str:
         target.touch()
 
     return f"Created {path}"
+
+def delete_file(root: Path, path: str) -> str:
+    """
+    Deletes a file located at the given file path.
+    """
+    real_root = root.resolve()
+    target = (real_root / path).resolve()
+    if not target.is_relative_to(real_root):
+        raise ToolError(f"Path is outside the allowed folder: {path}")
+
+    if _is_hidden(target.relative_to(real_root)):
+        raise ToolError("Cannot delete dot files/hidden files.")
+
+    if not target.exists():
+        raise ToolError("File does not exist.")
+
+    Path(target).unlink(missing_ok=True)
+    return f"Deleted {target}"
+
     
 
 
@@ -306,6 +325,24 @@ def build_registry(notes_root: Path) -> dict[str, Tool]:
                 "required": ["path"]
             },
             function=lambda path: create_file(notes_root, path),
+        ),
+        Tool(
+            name="delete_file",
+            description=(
+                "Deletes a file at a given location."
+                "Use location exactly as given by user."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path of the file to be deleted. Will be relative to the notes folder."
+                    },
+                },
+                "required": ["path"]
+            },
+            function=lambda path: delete_file(notes_root, path),
         )
     ]
     return {tool.name: tool for tool in tools}
