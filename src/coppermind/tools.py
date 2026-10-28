@@ -121,6 +121,28 @@ def write_to_file(root: Path, path: str, content: str) -> str:
 
     return f"Wrote: {content} to {Path(file.name).name}"
 
+def append_to_file(root: Path, path: str, content: str) -> str:
+    """
+    Appends the text passed to it to the file located
+    at the given filepath. If the file does not already exist, it will create it.
+    First checks whether the given path is relative to the real root, raises an error if not.
+    """
+    real_root = root.resolve()
+    target = (real_root / path).resolve()
+    if not target.is_relative_to(real_root):
+        raise ToolError(f"Path is outside the allowed folder: {path}")
+
+    if _is_hidden(target.relative_to(real_root)):
+        raise ToolError("Cannot write to hidden files.")
+
+    if not target.exists():
+        raise ToolError("File to append to does not exist.")
+
+    with open(target, "a", encoding="utf-8") as file:
+        file.write(content)
+
+    return f"Wrote {content} to the end of {Path(file.name).name}"
+
 
 
 @dataclass(frozen=True)
@@ -212,7 +234,7 @@ def build_registry(notes_root: Path) -> dict[str, Tool]:
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Path of the file to be created. Will be relative to the notes folder. e.g. reviews/superman.md",
+                        "description": "Path of the file to be written to. Will be relative to the notes folder. e.g. reviews/superman.md",
                     },
                     "content": {
                         "type": "string",
@@ -222,6 +244,28 @@ def build_registry(notes_root: Path) -> dict[str, Tool]:
                 "required": ["path", "content"],
             },
             function=lambda path, content: write_to_file(notes_root, path, content),
+        ),
+        Tool(
+            name="append_to_file",
+            description=(
+                "Appends text to the end of a given file in the users notes folder."
+                "Use file path exactly how it is given by the user."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path of the file to append to. Will be relative to the notes folder. e.g. reviews/spider-man.md."
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "Text to be appended to the file."
+                    },
+                },
+                "required": ["path", "content"]
+            },
+            function=lambda path, content: append_to_file(notes_root, path, content),
         )
     ]
     return {tool.name: tool for tool in tools}
