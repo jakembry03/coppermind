@@ -1,11 +1,1 @@
-I think The Batman gets a lot of what I love about the character right. I have always liked the idea of Batman being a detective, so getting a movie where he and Gordon spend most of their time investigating murders and trying to understand what is happening in Gotham was really cool. I could honestly watch an entire movie of those two working a case together.
-
-I also really like that he is still figuring things out. He has trained and built all of this equipment, but then he tries to escape a police station with a wingsuit and crashes into a bridge. There is something about that which makes the character feel more believable to me. He can be extremely capable and still misjudge something or make a mistake, especially this early on.
-
-Robert Pattinson was really good in the role. I understand why people wanted more Bruce Wayne, and I would want to see that developed in another movie, but I think it makes sense for where he is here. He has put almost everything he has into being Batman and has barely thought about what he could accomplish as Bruce. That feels like a real problem he needs to work through.
-
-My favorite part, though, is probably where his character ends up. He spends so much of the movie focused on making criminals afraid of him, and then he hears someone using the same language he uses to justify hurting people. I like that the movie actually makes him confront that. He has good intentions, but he still has to ask whether what he is doing is helping. The scene where he lights the flare and starts leading people out of the water felt earned because we had spent the whole movie watching him get to that point.
-
-I do think the movie could have been shorter. I was more invested in the investigation than the big threat at the end, and there were a few points where I felt the length. But I also liked spending time in this version of Gotham, so I don't know how much I would actually want cut.
-
-Overall, this is very close to what I want from a Batman movie. Give me a difficult case, a Gotham that feels dangerous, and a Bruce who has to learn something about being a hero while he is trying to solve it.
+Superman is the best

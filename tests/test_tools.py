@@ -2,7 +2,7 @@ import sys
 
 import pytest
 
-from coppermind.tools import ToolError, build_registry, list_files, read_file, get_current_datetime, write_to_file
+from coppermind.tools import ToolError, build_registry, list_files, read_file, get_current_datetime, write_to_file, append_to_file
 
 import re
 
@@ -80,7 +80,7 @@ def test_read_file_truncates_long_files(notes_root):
 
 def test_registry_keys_match_tool_names(notes_root):
     registry = build_registry(notes_root)
-    assert set(registry) == {"list_files", "read_file", "get_current_datetime", "write_to_file"}
+    assert set(registry) == {"list_files", "read_file", "get_current_datetime", "write_to_file", "append_to_file"}
     for name, tool in registry.items():
         assert tool.schema()["function"]["name"] == name
 
@@ -145,6 +145,18 @@ def test_write_file(notes_root, tmp_path):
 
     assert expected_path.is_file()
     assert expected_path.read_text(encoding="utf-8") == content
+
+def test_append_to_file(notes_root, tmp_path):
+    file_to_write = "test_write.md"
+    path = tmp_path / "notes" / file_to_write
+    write_content = "Hello World!"
+    write_result = write_to_file(notes_root, file_to_write, write_content)
+    append_content = "My name is Copper."
+    append_result = append_to_file(notes_root, file_to_write, append_content)
+
+    assert path.is_file()
+    assert path.read_text() == write_content + append_content
+
 
     
 
