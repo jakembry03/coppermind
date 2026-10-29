@@ -8,7 +8,8 @@ from coppermind.tools import (
     list_files,
     list_folders, 
     read_file,
-    copy_file, 
+    copy_file,
+    move_file, 
     get_current_datetime, 
     write_to_file, 
     append_to_file, 
@@ -106,7 +107,8 @@ def test_registry_keys_match_tool_names(notes_root):
         "list_files",
         "list_folders", 
         "read_file",
-        "copy_file", 
+        "copy_file",
+        "move_file", 
         "get_current_datetime", 
         "write_to_file", 
         "append_to_file", 
@@ -207,13 +209,24 @@ def test_delete_file(notes_root, tmp_path):
     assert expected_path.exists() == False
 
 def test_copy_file(notes_root, tmp_path):
-    source_file = "ideas/movie.md"
-    destination_path = "things/movie.md"
+    source_file = tmp_path / "notes" / "ideas/movie.md"
+    destination_path = tmp_path / "notes" / "things/movie.md"
     assert source_file.is_file()
 
     _ = copy_file(notes_root, source_file, destination_path)
 
     assert destination_path.is_file()
+
+def test_move_file(notes_root, tmp_path):
+    source_file = tmp_path / "notes" / "things/movie.md"
+    destination_path = tmp_path / "notes" / "stuff/movie.md"
+    assert source_file.is_file()
+
+    _ = move_file(notes_root, source_file, destination_path)
+
+    assert source_file.exists() == False
+    assert destination_path.is_file()
+
 
 
 

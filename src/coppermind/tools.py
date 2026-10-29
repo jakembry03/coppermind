@@ -167,7 +167,7 @@ def append_to_file(root: Path, path: str, content: str) -> str:
 
     return f"Wrote {content} to the end of {Path(file.name).name}"
 
-def copy_file(root: Path, source: str, destination: str):
+def copy_file(root: Path, source: str, destination: str) -> str:
     real_root = root.resolve()
     source_path = (real_root / source).resolve()
     destination_path = (real_root / destination).resolve()
@@ -182,6 +182,22 @@ def copy_file(root: Path, source: str, destination: str):
 
     shutil.copy(source_path, destination_path)
     return f"Copied: {source_path} to {destination_path}"
+
+def move_file(root: Path, source: str, destination: str) -> str:
+    real_root = root.resolve()
+    source_path = (real_root / source).resolve()
+    destination_path = (real_root / source).resolve()
+    if not source_path.is_relative_to(real_root):
+        raise ToolError(f"Source path is outside the allowed folder: {real_root}")
+    if not destination_path.is_relative_to(real_root):
+        raise ToolError(f"Destination path is outside the allowed folder: {real_root}")
+    if not source_path.exists():
+        raise ToolError("Source path does not exist.")
+    if not source_path.is_file():
+        raise ToolError("Source path is not a file.")
+
+    shutil.move(source_path, destination_path)
+    return f"Moved: {source_path} to {destination_path}"
     
 
 def create_file(root: Path, path: str) -> str:
@@ -326,6 +342,28 @@ def build_registry(notes_root: Path) -> dict[str, Tool]:
                 "required": ["source_path", "destination_path"]
             },
             function=lambda source_path, destination_path: copy_file(notes_root, source_path, destination_path),
+        ),
+        Tool(
+            name="move_file",
+            description=(
+                "Moves a file from a source path to a destination path."
+                "Use paths exactly as given to you by the user."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "source_path": {
+                        "type": "string",
+                        "description": "The path of the source file to be moved. Will be relative to the notes folder."
+                    },
+                    "destination_path": {
+                        "type": "string",
+                        "description": "The destination path to move the file to. Will be relative to the notes folder."
+                    }
+                },
+                "required": ["source_path", "destination_path"]
+            },
+            function=lambda source_path, destination_path: move_file(notes_root, source_path, destination_path),
         ),
         Tool(
             name="get_current_datetime",
