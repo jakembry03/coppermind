@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from datetime import datetime
+import shutil
 
 MAX_CHARACTERS = 20000
 
@@ -165,6 +166,23 @@ def append_to_file(root: Path, path: str, content: str) -> str:
         file.write(content)
 
     return f"Wrote {content} to the end of {Path(file.name).name}"
+
+def copy_file(root: Path, source: str, destination: str):
+    real_root = root.resolve()
+    source_path = (real_root / source).resolve()
+    destination_path = (real_root / destination).resolve()
+    if not source_path.is_relative_to(real_root):
+        raise ToolError(f"Source path is outside the allowed folder: {real_root}")
+    if not destination_path.is_relative_to(real_root):
+        raise ToolError(f"Destination path is outside the allowed folder: {real_root}")
+    if not source_path.exists():
+        raise ToolError("Source path does not exist.")
+    if not source_path.is_file():
+        raise ToolError("Source path is not a file.")
+
+    shutil.copy(source_path, destination_path)
+    return f"Copied: {source_path} to {destination_path}"
+    
 
 def create_file(root: Path, path: str) -> str:
     """
