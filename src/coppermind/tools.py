@@ -306,6 +306,28 @@ def build_registry(notes_root: Path) -> dict[str, Tool]:
             function=lambda path: read_file(notes_root, path),
         ),
         Tool(
+            name="copy_file",
+            description=(
+                "Copies a file from a source path to a destination path."
+                "Use paths exactly as given to you by the user."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "source_path": {
+                        "type": "string",
+                        "description": "The path of the source file to be copied. Will be relative to the notes folder."
+                    },
+                    "destination_path": {
+                        "type": "string",
+                        "description": "The path of the destination file to be copied to. Will be relative to the notes folder."
+                    }
+                },
+                "required": ["source_path", "destination_path"]
+            },
+            function=lambda source_path, destination_path: copy_file(notes_root, source_path, destination_path),
+        ),
+        Tool(
             name="get_current_datetime",
             description=(
                 "Returns the current local date and time of the system formatted as 'YYYY-MM-DD HH:MM:SS'."

@@ -7,7 +7,8 @@ from coppermind.tools import (
     build_registry, 
     list_files,
     list_folders, 
-    read_file, 
+    read_file,
+    copy_file, 
     get_current_datetime, 
     write_to_file, 
     append_to_file, 
@@ -104,7 +105,8 @@ def test_registry_keys_match_tool_names(notes_root):
     assert set(registry) == {
         "list_files",
         "list_folders", 
-        "read_file", 
+        "read_file",
+        "copy_file", 
         "get_current_datetime", 
         "write_to_file", 
         "append_to_file", 
@@ -203,6 +205,16 @@ def test_delete_file(notes_root, tmp_path):
     _ = delete_file(notes_root, file_to_delete)
 
     assert expected_path.exists() == False
+
+def test_copy_file(notes_root, tmp_path):
+    source_file = "ideas/movie.md"
+    destination_path = "things/movie.md"
+    assert source_file.is_file()
+
+    _ = copy_file(notes_root, source_file, destination_path)
+
+    assert destination_path.is_file()
+
 
 
 
