@@ -14,10 +14,16 @@ from datetime import datetime
 import shutil
 
 MAX_CHARACTERS = 20000
-
+MEMORY_FILE = Path(__file__).parent / "memory" / "memory.md"
 
 class ToolError(Exception):
     """A tool refused a request. The message is safe to show the model."""
+
+def save_memory(fact: str) -> str:
+    """Append one fact about the user to long-term memory."""
+    with MEMORY_FILE.open("a", encoding="utf-8") as f:
+        f.write(f"- {fact}\n")
+    return f"saved: {fact}"
 
 
 def get_current_datetime() -> str:
@@ -279,6 +285,13 @@ def build_registry(notes_root: Path) -> dict[str, Tool]:
     invents (like `root` or `max_chars`) fails instead of being passed through.
     """
     tools = [
+        Tool(
+            name="save_memory",
+            description=(
+                "Save one lasting fact about Jake to long-term memory so you will know it."
+                "in future conversations. Use it when Jake tells you something "
+            )
+        )
         Tool(
             name="list_files",
             description=(

@@ -1,0 +1,18 @@
+Context Engineering for Copper:
+
+Context refers to the set of tokens included when sampling from a large-language model. 
+Context engineering refers to the set of strategies for curating and maintaining the optimal set of tokens (information) during LLM inference, including all the other information that may land there outside of the prompts.
+
+An agent running in a loop generates more and more data that *could* be relevant for th enext turn of inference, and this information must be cyclically refined. We must decide what will go into the limited context window from that constantly evolving universe of possible information.
+
+We have obsereved that LLM's like humans, lose focus or experience confusion at a certain point. Studies on needle-in-a-haystack style benchmarking have uncovered the concept of **context rot**: as the number of tokens in the context window increases, the model's ability to accurately recall information from that context decreases.
+
+
+Good context engineering means finding the smallest possible set of high-signal tokens that maximize the likelihood of some desired outcome.
+
+System Prompts: should be extremely clear and use simple, direct language that presents ideas at the right altitude for the agent. 
+
+	We (Anthropic) recommends organizing prompts into distinct sections (like <background_information>, <instructions>, ## Tool guidance, ## Output description, etc.) and using techniques like XML tagging or Markdown headers to delineate these sections, althrough the exact formatting of prompts is likely becoming less important as models become more capable.
+		For Copper, when using a smaller model, best to have good prompt engineering.
+
+

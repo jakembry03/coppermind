@@ -12,8 +12,13 @@ from coppermind.config import Settings
 from coppermind import llm
 from coppermind.llm import Message
 import json
+from importlib import files
 
 MAX_ITERATIONS = 10
+
+def load_memory() -> str:
+    """Read the memory files that ships inside the Coppermind package."""
+    return (files("coppermind") / "memory" / "memory.md").read_text(encoding="utf-8")
 
 class AgentError(Exception):
     """The loop gave up: e.g. the model never stopped asking for tools"""
@@ -24,7 +29,7 @@ class Agent:
         self.settings = settings
         self.registry = registry
         self.schemas = tool_schemas(registry)
-        self.system_prompt = system_prompt if system_prompt is not None else load_system_prompt()
+        self.system_prompt = system_prompt if system_prompt is not None else load_system_prompt() + "\n## What you know about Jake:\n" + load_memory()
         self.messages: list[Message] = []
         self.clear()
 
