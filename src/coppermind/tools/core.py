@@ -31,8 +31,7 @@ def core_tools() -> list[Tool]:
         Tool(
             name="save_memory",
             description=(
-                "Save a lasting fact about Jake for future conversations:"
-                "preferences, projects, people, decisions, or anything he asks you to remember."
+                "Save a lasting fact about Jake for future conversations: preferences, projects, people, decisions, or anything he asks you to remember."
                 "Skip small talk, one-time requests, guesses, secrets, and facts you already know."
             ),
             parameters={

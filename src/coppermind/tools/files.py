@@ -75,6 +75,15 @@ def delete_file(root: Path, path: str) -> str:
     target.unlink()
     return f"Deleted {path}"
 
+def create_folder(root: Path, path: str) -> str:
+    target = safe_path(root, path)
+    if target.exists():
+        raise ToolError("Folder already exists.")
+    elif not target.exists():
+        target.mkdir(parents=True, exist_ok=True)
+
+    return f"Created the folder: {target}"
+
 
 def list_files(root: Path, path: str = ".") -> str:
     """List every file under root as relative paths, one per line, sorted."""
@@ -241,6 +250,26 @@ def file_tools(notes_root: Path) -> list[Tool]:
             function=lambda path: delete_file(notes_root, path),
             group="files",
             writes=True,      # it changes something, so the approval gate must see it
+        ),
+        Tool(
+            name="create_folder",
+            description=(
+                "Create an empty folder at a given location."
+                "Use location exactly as given by user."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path of the folder to be created. Will be relative to the notes folder."
+                    }
+                },
+                "required": ["path"],
+            },
+            function=lambda path: create_folder(notes_root, path),
+            group="files",
+            writes=True,
         ),
         Tool(
             name="list_files",
