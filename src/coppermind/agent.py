@@ -6,13 +6,14 @@ calls. Every tool request and result is a message in the history, so the model
 sees what its tool returned on the next call.
 """
 
-from coppermind.tools import Tool, ToolError, tool_schemas
+from coppermind.tools import tool_schemas
+from coppermind.tools.base import Tool, ToolError
 from coppermind.conversation import load_system_prompt
 from coppermind.config import Settings
 from coppermind import llm
 from coppermind.llm import Message
 import json
-from importlib import files
+from importlib.resources import files
 
 MAX_ITERATIONS = 10
 
@@ -28,7 +29,8 @@ class Agent:
     def __init__(self, registry: dict[str, Tool], settings: Settings | None = None, system_prompt: str | None = None):
         self.settings = settings
         self.registry = registry
-        self.schemas = tool_schemas(registry)
+        self.active_groups: set[str] = {"core", "files"}
+        self.schemas = tool_schemas(registry, self.active_groups)
         self.system_prompt = system_prompt if system_prompt is not None else load_system_prompt() + "\n## What you know about Jake:\n" + load_memory()
         self.messages: list[Message] = []
         self.clear()
@@ -70,6 +72,9 @@ class Agent:
         tool = self.registry.get(name)
         if tool is None:
             return f"Error: Unknown tool: {name}"
+
+        if tool.group not in self.active_groups:
+            return f"Error: {name} is in the '{tool.group}' group, which isn't loaded."
 
         if isinstance(raw_arguments, str):
             try:

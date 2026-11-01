@@ -2,7 +2,8 @@
 
 from pathlib import Path
 
-from coppermind.tools import ToolError, list_files
+from coppermind.tools import ToolError
+from coppermind.tools.files import list_files
 
 try:
     print(list_files(Path("sandbox/notes")))

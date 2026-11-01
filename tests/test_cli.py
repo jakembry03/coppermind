@@ -75,6 +75,7 @@ def test_main_gives_the_agent_every_tool(monkeypatch):
         "append_to_file", 
         "create_file",
         "delete_file",
+        "save_memory",
     }
 
 

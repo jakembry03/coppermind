@@ -2,15 +2,14 @@ import sys
 
 import pytest
 
-from coppermind.tools import (
-    ToolError, 
-    build_registry, 
+from coppermind.tools import ToolError, build_registry
+from coppermind.tools.core import get_current_datetime
+from coppermind.tools.files import (
     list_files,
     list_folders, 
     read_file,
     copy_file,
     move_file, 
-    get_current_datetime, 
     write_to_file, 
     append_to_file, 
     create_file,
@@ -114,6 +113,7 @@ def test_registry_keys_match_tool_names(notes_root):
         "append_to_file", 
         "create_file",
         "delete_file",
+        "save_memory",
     }
     for name, tool in registry.items():
         assert tool.schema()["function"]["name"] == name
@@ -127,9 +127,11 @@ def test_registry_schemas_have_openai_shape(notes_root):
         assert schema["function"]["parameters"]["type"] == "object"
 
 
-def test_file_tools_are_read_only(notes_root):
+def test_only_reading_file_tools_are_read_only(notes_root):
+    read_only = {"list_files", "list_folders", "read_file"}
     for tool in build_registry(notes_root).values():
-        assert tool.writes is False
+        if tool.group == "files":
+            assert tool.writes is (tool.name not in read_only)
 
 
 def test_registry_tools_run_against_the_bound_root(notes_root):
@@ -218,7 +220,7 @@ def test_copy_file(notes_root, tmp_path):
     assert destination_path.is_file()
 
 def test_move_file(notes_root, tmp_path):
-    source_file = tmp_path / "notes" / "things/movie.md"
+    source_file = tmp_path / "notes" / "ideas/movie.md"
     destination_path = tmp_path / "notes" / "stuff/movie.md"
     assert source_file.is_file()
 
