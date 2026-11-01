@@ -23,6 +23,7 @@ def read_file(root: Path, path: str, max_chars: int = MAX_CHARACTERS):
                    + f"\n[Truncated: showing the first {max_chars} characters of a long file.]")
     return content
 
+
 def write_to_file(root: Path, path: str, content: str) -> str:
     """
     Writes content passed to it to a file of a given filepath.
@@ -41,6 +42,7 @@ def write_to_file(root: Path, path: str, content: str) -> str:
 
     return f"Wrote: {content} to {Path(file.name).name}"
 
+
 def append_to_file(root: Path, path: str, content: str) -> str:
     """
     Appends the text passed to it to the file located
@@ -53,6 +55,7 @@ def append_to_file(root: Path, path: str, content: str) -> str:
         file.write(content)
 
     return f"Wrote {content} to the end of {Path(file.name).name}"
+
 
 def create_file(root: Path, path: str) -> str:
     """
@@ -68,12 +71,14 @@ def create_file(root: Path, path: str) -> str:
 
     return f"Created {path}"
 
+
 def delete_file(root: Path, path: str) -> str:
     target = safe_path(root, path)
     if not target.is_file():
         raise ToolError(f"File does not exist: {path}")
     target.unlink()
     return f"Deleted {path}"
+
 
 def create_folder(root: Path, path: str) -> str:
     target = safe_path(root, path)
@@ -145,7 +150,6 @@ def move_file(root: Path, source: str, destination: str) -> str:
 
     shutil.move(source_path, destination_path)
     return f"Moved: {source_path} to {destination_path}"
-
 
 
 def file_tools(notes_root: Path) -> list[Tool]:
