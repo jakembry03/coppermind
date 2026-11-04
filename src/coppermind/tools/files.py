@@ -51,6 +51,8 @@ def append_to_file(root: Path, path: str, content: str) -> str:
     """
     target = safe_path(root, path)
 
+    target.parent.mkdir(parents=True, exist_ok=True)
+
     with open(target, "a", encoding="utf-8") as file:
         file.write(content)
 
@@ -140,6 +142,13 @@ def copy_file(root: Path, source: str, destination: str) -> str:
     source_path = safe_path(root, source)
     destination_path = safe_path(root, destination)
 
+    if not source_path.exists():
+        raise ToolError(f"Source path does not exist: {source}")
+    if not source_path.is_file():
+        raise ToolError(f"Source path is not a file: {source}")
+
+    destination_path.parent.mkdir(parents=True, exist_ok=True)
+
     shutil.copy(source_path, destination_path)
     return f"Copied: {source_path} to {destination_path}"
 
@@ -147,6 +156,13 @@ def copy_file(root: Path, source: str, destination: str) -> str:
 def move_file(root: Path, source: str, destination: str) -> str:
     source_path = safe_path(root, source)
     destination_path = safe_path(root, destination)
+
+    if not source_path.exists():
+        raise ToolError("Source path does not exist.")
+    if not source_path.is_file():
+        raise ToolError("Source path is not a file.")
+
+    destination_path.parent.mkdir(parents=True, exist_ok=True)
 
     shutil.move(source_path, destination_path)
     return f"Moved: {source_path} to {destination_path}"

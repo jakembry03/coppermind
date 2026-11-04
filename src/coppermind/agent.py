@@ -93,5 +93,7 @@ class Agent:
             return f"Error: {error}"
         except TypeError:
             return f"Error: wrong arguments for {name}"
+        except OSError as error:
+            return f"Error: {error}"
         
         
