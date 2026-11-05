@@ -81,63 +81,6 @@ def delete_file(root: Path, path: str) -> str:
     target.unlink()
     return f"Deleted {path}"
 
-
-def create_folder(root: Path, path: str) -> str:
-    target = safe_path(root, path)
-    if target.exists():
-        raise ToolError("Folder already exists.")
-    elif not target.exists():
-        target.mkdir(parents=True, exist_ok=True)
-
-    return f"Created the folder: {target}"
-
-
-def list_files(root: Path, path: str = ".") -> str:
-    """List every file under root as relative paths, one per line, sorted."""
-    target = safe_path(root, path)
-
-    found = []
-    for entry in target.rglob("*"):
-        if not entry.is_file():
-            continue
-        # A symlink can live inside root but point outside it; read_file would refuse it,
-        # so don't advertise it either.
-        if not entry.resolve().is_relative_to(target):
-            continue
-        relative = entry.relative_to(target)
-        if is_hidden(relative):
-            continue
-        found.append(relative.as_posix())
-
-    if not found:
-        return "No files found."
-
-    found.sort()
-    return "\n".join(found)
-
-
-def list_folders(root: Path, path: str = ".") -> str:
-    """List every folder under root as relative paths, one per line, sorted."""
-    target = safe_path(root, path)
-
-    found = []
-    for entry in target.rglob("*"):
-        if not entry.is_dir():
-            continue
-        if not entry.resolve().is_relative_to(target):
-            continue
-        relative = entry.relative_to(target)
-        if is_hidden(relative):
-            continue
-        found.append(relative.as_posix())
-
-    if not found:
-        return "No files found."
-
-    found.sort()
-    return "\n".join(found)
-
-
 def copy_file(root: Path, source: str, destination: str) -> str:
     source_path = safe_path(root, source)
     destination_path = safe_path(root, destination)
@@ -167,6 +110,93 @@ def move_file(root: Path, source: str, destination: str) -> str:
     shutil.move(source_path, destination_path)
     return f"Moved: {source_path} to {destination_path}"
 
+def list_files(root: Path, path: str = ".") -> str:
+    """List every file under root as relative paths, one per line, sorted."""
+    target = safe_path(root, path)
+
+    found = []
+    for entry in target.rglob("*"):
+        if not entry.is_file():
+            continue
+        # A symlink can live inside root but point outside it; read_file would refuse it,
+        # so don't advertise it either.
+        if not entry.resolve().is_relative_to(target):
+            continue
+        relative = entry.relative_to(target)
+        if is_hidden(relative):
+            continue
+        found.append(relative.as_posix())
+
+    if not found:
+        return "No files found."
+
+    found.sort()
+    return "\n".join(found)
+
+
+def create_folder(root: Path, path: str) -> str:
+    target = safe_path(root, path)
+    if target.exists():
+        raise ToolError("Folder already exists.")
+    elif not target.exists():
+        target.mkdir(parents=True, exist_ok=True)
+
+    return f"Created the folder: {target}"
+
+
+
+def list_folders(root: Path, path: str = ".") -> str:
+    """List every folder under root as relative paths, one per line, sorted."""
+    target = safe_path(root, path)
+
+    found = []
+    for entry in target.rglob("*"):
+        if not entry.is_dir():
+            continue
+        if not entry.resolve().is_relative_to(target):
+            continue
+        relative = entry.relative_to(target)
+        if is_hidden(relative):
+            continue
+        found.append(relative.as_posix())
+
+    if not found:
+        return "No files found."
+
+    found.sort()
+    return "\n".join(found)
+
+def copy_folder(root: Path, source: str, destination: str) -> str:
+    """Copy the source folder under root to a destination under root."""
+    source_path = safe_path(root, source)
+    destination_path = safe_path(root, destination)
+
+    if not source_path.exists():
+        raise ToolError(f"Source path does not exist: {source_path}")
+    if not source_path.is_dir():
+        raise ToolError(f"Source path is not a folder: {source_path}")
+
+    destination_path.mkdir(parents=True, exist_ok=True)
+
+    shutil.copytree(source_path, destination_path, dirs_exist_ok=True)
+
+    return f"Copied {source_path} to {destination_path}"
+
+def move_folder(root: Path, source: str, destination: str) -> str:
+    """Moves the source folder (under root) to a destionation (under root)"""
+    source_path = safe_path(root, source)
+    destination_path = safe_path(root, destination)
+
+    if not destination_path.exists():
+        raise ToolError(f"Destination path does not exist: {destination_path}")
+    if not destination_path.is_dir():
+        raise ToolError(f"Destination path is not a folder: {destination_path}")
+
+    destination_path.mkdir(parents=True, exist_ok=True)
+
+    shutil.move(source_path, destination_path)
+
+    return f"Moved {source_path} to {destination_path}"
 
 def file_tools(notes_root: Path) -> list[Tool]:
     """The file group, with the notes folder bound in so the model never chooses it."""
@@ -318,6 +348,54 @@ def file_tools(notes_root: Path) -> list[Tool]:
             function=lambda: list_folders(notes_root),
             group="files",
             writes=False,
+        ),
+        Tool(
+            name="copy_folders",
+            description=(
+                "Copies a folder from a source path to a destination path."
+                "Use paths exactly as given to you by the user."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "source_path": {
+                        "type": "string",
+                        "description": "The path of the source folder to be copied. Will be relative to the notes folder."
+                    },
+                    "destination_path": {
+                        "type": "string",
+                        "description": "The destination path to copy the folder to. Will be relative to the notes folder."
+                    }
+                },
+                "required": ["source_path", "destination_path"]
+            },
+            function=lambda source_path, destination_path: copy_folder(notes_root, source_path, destination_path),
+            group="files",
+            writes=True,
+        ),
+        Tool(
+            name="move_folder",
+            description=(
+                "Moves a folder from a source path to a destination path."
+                "Use paths exactly as given to you by the user."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "source_path": {
+                        "type": "string",
+                        "description": "The path of the source folder to be moved. Will be relative to the notes folder."
+                    },
+                    "destination_path": {
+                        "type": "string",
+                        "description": "The destination path to move the folder to. Will be relative to the notes folder."
+                    }
+                },
+                "required": ["source_path", "destination_path"]
+            },
+            function=lambda source_path, destination_path: move_folder(notes_root, source_path, destination_path),
+            group="files",
+            writes=True,
         ),
         Tool(
             name="copy_file",
