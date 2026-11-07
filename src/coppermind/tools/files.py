@@ -81,6 +81,7 @@ def delete_file(root: Path, path: str) -> str:
     target.unlink()
     return f"Deleted {path}"
 
+
 def copy_file(root: Path, source: str, destination: str) -> str:
     source_path = safe_path(root, source)
     destination_path = safe_path(root, destination)
@@ -109,6 +110,7 @@ def move_file(root: Path, source: str, destination: str) -> str:
 
     shutil.move(source_path, destination_path)
     return f"Moved: {source_path} to {destination_path}"
+
 
 def list_files(root: Path, path: str = ".") -> str:
     """List every file under root as relative paths, one per line, sorted."""
@@ -144,7 +146,6 @@ def create_folder(root: Path, path: str) -> str:
     return f"Created the folder: {target}"
 
 
-
 def list_folders(root: Path, path: str = ".") -> str:
     """List every folder under root as relative paths, one per line, sorted."""
     target = safe_path(root, path)
@@ -166,6 +167,7 @@ def list_folders(root: Path, path: str = ".") -> str:
     found.sort()
     return "\n".join(found)
 
+
 def copy_folder(root: Path, source: str, destination: str) -> str:
     """Copy the source folder under root to a destination under root."""
     source_path = safe_path(root, source)
@@ -182,6 +184,7 @@ def copy_folder(root: Path, source: str, destination: str) -> str:
 
     return f"Copied {source_path} to {destination_path}"
 
+
 def move_folder(root: Path, source: str, destination: str) -> str:
     """Moves the source folder (under root) to a destionation (under root)"""
     source_path = safe_path(root, source)
@@ -197,6 +200,7 @@ def move_folder(root: Path, source: str, destination: str) -> str:
     shutil.move(source_path, destination_path)
 
     return f"Moved {source_path} to {destination_path}"
+
 
 def file_tools(notes_root: Path) -> list[Tool]:
     """The file group, with the notes folder bound in so the model never chooses it."""
