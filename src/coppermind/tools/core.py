@@ -47,7 +47,7 @@ def core_tools() -> list[Tool]:
                 },
                 "required": ["fact"],
             },
-            function=save_memory,
+            function=lambda fact: save_memory(fact),
             group="core",
             writes=True,
         ),
