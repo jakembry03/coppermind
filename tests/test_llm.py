@@ -4,13 +4,15 @@ import httpx
 import pytest
 
 from coppermind import llm
+from coppermind.llm import ChatReply
 from coppermind.config import Settings
 
 TEST_SETTINGS = Settings(
     base_url="http://localhost:11434/v1", 
     model="qwen3:4b-instruct", 
     timeout=5.0,
-    notes_dir=Path("sandbox/notes")
+    notes_dir=Path("sandbox/notes"),
+    context_window=4096,
 )
 USER_MESSAGE = [{"role": "user", "content": "What is the capital of Spain?"}]
 
@@ -33,7 +35,7 @@ def test_chat_returns_assistant_message(monkeypatch):
 
     reply = llm.chat(USER_MESSAGE, settings=TEST_SETTINGS)
 
-    assert reply == {"role": "assistant", "content": "Madrid."}
+    assert reply == ChatReply(message={'role': 'assistant', 'content': 'Madrid.'}, usage=None)
 
 
 def test_chat_sends_model_and_messages_to_the_right_url(monkeypatch):

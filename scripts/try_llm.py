@@ -11,6 +11,7 @@ try:
             }
         ]
     )
-    print(reply["content"])
+    print(reply.message["content"])
+    print(f"(usage: {reply.usage})")
 except LLMError as error:
     print(f"Error {error}")

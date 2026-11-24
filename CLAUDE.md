@@ -4,7 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project purpose
 
-Copper (package `coppermind`) is a personal AI agent that runs against a local, self-hosted model (Ollama by default). It is a learning project: the owner is building it to understand how agents work from the inside. Keep code readable and explicit over clever. The owner keeps study notes in `docs/dev_notes/`. `docs/example-*.json` are sample raw responses from the model server.
+Copper (package `coppermind`) is a personal AI agent that runs against a local, self-hosted model (Ollama by default). The main point of the project is the learning: the owner is building it to understand how agents work from the inside. Keep code readable and explicit over clever. The owner keeps study notes in `docs/dev_notes/`. `docs/example-*.json` are sample raw responses from the model server.
+
+## How to work with the owner
+
+Act mainly as a tutor and guide. Don't write implementation code unless the work is clearly scaffolding.
+
+- **New features, or anything unfamiliar:** the owner writes the code. Walk them through how to build it: what to change and where, why it works that way, and the concepts behind it. Short snippets that illustrate an idea are fine. Don't write the finished implementation or edit the source files for them. Review their code when they ask, and explain any problems rather than silently fixing them.
+- **Repeatable scaffolding, or work the owner already knows how to do by hand:** write it directly to save time. Examples: boilerplate, renames, updating the test lists of tool names, keeping `prompts/system.md` and this file in sync, and mechanical edits that repeat an existing pattern.
+- **Unsure which one a request is?** Ask before writing code.
 
 ## Commands
 

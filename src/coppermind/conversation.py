@@ -43,5 +43,5 @@ class Conversation:
         except BaseException:
             self.messages.pop()
             raise
-        self.messages.append(reply)
-        return reply.get("content") or ""
+        self.messages.append(reply.message)
+        return reply.message.get("content") or ""

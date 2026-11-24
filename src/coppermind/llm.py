@@ -6,11 +6,13 @@ chat completions API, which Ollama, llama.cpp's server, and LM Studio all suppor
 backends is a config change, not a rewrite.
 """
 
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
 
 from coppermind.config import Settings, load_settings
+from coppermind.usage import Usage
 
 Message = dict[str, Any]
 
@@ -19,13 +21,21 @@ class LLMError(Exception):
     """The model server couldn't be reached or returned something unusable."""
 
 
+@dataclass(frozen=True)
+class ChatReply:
+    message: Message
+    usage: Usage | None
+
+
 def chat(
     messages: list[Message],
     tools: list[dict[str, Any]] | None = None,
     settings: Settings | None = None,
-) -> Message:
+) -> ChatReply:
     """
-    Send a conversation to the model and return its reply message.
+    Send a conversation to the model and return a ChatReply.
+
+    Callers append reply.message to the conversation.
 
     The reply has the same shape as the messages sent in, e.g.
     {"role": "assistant", "content": "..."}, so callers can append it
@@ -56,6 +66,18 @@ def chat(
         ) from exc
 
     try:
-        return response.json()["choices"][0]["message"]
+        body = response.json()
+        message = body["choices"][0]["message"]
     except (ValueError, KeyError, IndexError) as exc:
         raise LLMError("The model server returned a response Copper couldn't read.") from exc
+
+    raw_usage = body.get("usage") or {}
+    prompt_tokens = raw_usage.get("prompt_tokens")
+    completion_tokens = raw_usage.get("completion_tokens")
+
+    if prompt_tokens is None or completion_tokens is None:
+        usage = None
+    else:
+        usage = Usage(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
+
+    return ChatReply(message=message, usage=usage)

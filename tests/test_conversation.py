@@ -7,7 +7,7 @@ def fake_chat_replying(text, calls):
 
     def fake_chat(messages, tools=None, settings=None):
         calls.append(list(messages))
-        return {"role": "assistant", "content": text}
+        return llm.ChatReply(message={"role": "assistant", "content": text}, usage=None)
 
     return fake_chat
 

@@ -64,11 +64,12 @@ class Agent:
 
             for _ in range(MAX_ITERATIONS):
                 reply = llm.chat(self.messages, tools=self.schemas, settings=self.settings)
-                self.messages.append(reply)
+                assistant_message = reply.message
+                self.messages.append(assistant_message)
 
-                calls = reply.get("tool_calls")
+                calls = assistant_message.get("tool_calls")
                 if not calls:
-                    return reply.get("content") or "" 
+                    return assistant_message.get("content") or ""
 
                 for call in calls:
                     result = self.run_tool_call(call)
