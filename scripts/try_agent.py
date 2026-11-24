@@ -2,16 +2,17 @@
 
 import json
 import sys
-from pathlib import Path
 
 from coppermind.agent import Agent, AgentError
+from coppermind.config import load_settings
 from coppermind.llm import LLMError
 from coppermind.tools import build_registry
 
 question = sys.argv[1] if len(sys.argv) > 1 else "Whats' in my grocrey list?"
 
-registry = build_registry(Path("sandbox/notes"))
-agent = Agent(registry)
+settings = load_settings()
+registry = build_registry(settings.notes_dir)
+agent = Agent(registry, settings=settings)
 
 try:
     answer = agent.send(question)

@@ -16,4 +16,9 @@ dist/
 # Copper runtime data
 sessions/
 
+# Office lock and temp files (created while a .docx is open)
+~$*
+.~lock*
 
+# Old location of long-term memory; it now lives in ~/.copper/memory.md
+src/coppermind/memory/memory.md

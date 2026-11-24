@@ -1,8 +1,41 @@
-from pathlib import Path
-from coppermind.tools.base import Tool, ToolError, safe_path, is_hidden
+import os
 import shutil
+from pathlib import Path
+
+from coppermind.tools.base import Tool, ToolError, safe_path
 
 MAX_CHARACTERS = 20000
+MAX_LIST_ENTRIES = 500
+
+
+def show_path(root: Path, given: str | Path, actual: Path) -> str:
+    """
+    Describe a path the way the model gave it to us.
+
+    If the model passed a relative path, answer with a path relative to the notes
+    folder. If it passed an absolute path, answer with an absolute path.
+    """
+    if Path(given).is_absolute():
+        return str(actual)
+    return actual.relative_to(root.resolve()).as_posix()
+
+
+def final_destination(root: Path, source_path: Path, destination_path: Path, destination: str) -> Path:
+    """
+    Work out where a copy or move will land, the way `mv` and `cp` do.
+
+    If the destination is an existing folder, the source goes inside it, keeping its name.
+    Otherwise the destination is the new path itself. Either way, nothing gets overwritten.
+    """
+    if destination_path.is_dir():
+        final = destination_path / source_path.name
+    else:
+        final = destination_path
+
+    if final.exists():
+        raise ToolError(f"Destination already exists: {show_path(root, destination, final)}")
+    return final
+
 
 def read_file(root: Path, path: str, max_chars: int = MAX_CHARACTERS):
     """Read a text file under root and return its contents."""
@@ -26,52 +59,39 @@ def read_file(root: Path, path: str, max_chars: int = MAX_CHARACTERS):
 
 def write_to_file(root: Path, path: str, content: str) -> str:
     """
-    Writes content passed to it to a file of a given filepath.
-    If the file does not already exist it will create it.
-    First checks whether the given path is relative to the real root,
-    raises an error if not.
+    Replace the contents of a file with `content`, creating the file and its
+    parent folders if they don't exist yet.
     """
     target = safe_path(root, path)
-
-    if not target.exists():
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.touch()
-
-    with open(target, "w", encoding="utf-8") as file:
-        file.write(content)
-
-    return f"Wrote: {content} to {Path(file.name).name}"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(content, encoding="utf-8")
+    return f"Wrote {len(content)} characters to {show_path(root, path, target)}"
 
 
 def append_to_file(root: Path, path: str, content: str) -> str:
     """
-    Appends the text passed to it to the file located
-    at the given filepath. If the file does not already exist, it will create it.
-    First checks whether the given path is relative to the real root, raises an error if not.
+    Add `content` to the end of a file, creating the file and its parent
+    folders if they don't exist yet.
     """
     target = safe_path(root, path)
-
     target.parent.mkdir(parents=True, exist_ok=True)
-
     with open(target, "a", encoding="utf-8") as file:
         file.write(content)
-
-    return f"Wrote {content} to the end of {Path(file.name).name}"
+    return f"Appended {len(content)} characters to {show_path(root, path, target)}"
 
 
 def create_file(root: Path, path: str) -> str:
-    """
-    Creates an empty file of a given file type.
-    """
+    """Create an empty file, along with any missing parent folders."""
     target = safe_path(root, path)
 
-    if target.exists():
+    if target.is_file():
         raise ToolError("File already exists.")
-    elif not target.exists():
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.touch()
+    if target.exists():
+        raise ToolError(f"A folder already exists at that path: {path}")
 
-    return f"Created {path}"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.touch()
+    return f"Created {show_path(root, path, target)}"
 
 
 def delete_file(root: Path, path: str) -> str:
@@ -83,6 +103,7 @@ def delete_file(root: Path, path: str) -> str:
 
 
 def copy_file(root: Path, source: str, destination: str) -> str:
+    """Copy a file. Refuses to overwrite anything already at the destination."""
     source_path = safe_path(root, source)
     destination_path = safe_path(root, destination)
 
@@ -91,115 +112,155 @@ def copy_file(root: Path, source: str, destination: str) -> str:
     if not source_path.is_file():
         raise ToolError(f"Source path is not a file: {source}")
 
-    destination_path.parent.mkdir(parents=True, exist_ok=True)
-
-    shutil.copy(source_path, destination_path)
-    return f"Copied: {source_path} to {destination_path}"
+    final = final_destination(root, source_path, destination_path, destination)
+    final.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(source_path, final)
+    return f"Copied {show_path(root, source, source_path)} to {show_path(root, destination, final)}"
 
 
 def move_file(root: Path, source: str, destination: str) -> str:
+    """Move a file. Refuses to overwrite anything already at the destination."""
     source_path = safe_path(root, source)
     destination_path = safe_path(root, destination)
 
     if not source_path.exists():
-        raise ToolError("Source path does not exist.")
+        raise ToolError(f"Source path does not exist: {source}")
     if not source_path.is_file():
-        raise ToolError("Source path is not a file.")
+        raise ToolError(f"Source path is not a file: {source}")
 
-    destination_path.parent.mkdir(parents=True, exist_ok=True)
+    final = final_destination(root, source_path, destination_path, destination)
+    final.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(source_path, final)
+    return f"Moved {show_path(root, source, source_path)} to {show_path(root, destination, final)}"
 
-    shutil.move(source_path, destination_path)
-    return f"Moved: {source_path} to {destination_path}"
+
+def list_target(root: Path, path: str | None) -> Path:
+    """
+    The folder a listing tool should walk: the notes folder by default, or any
+    absolute path the model passes. Unlike the other file tools, listing is not
+    limited to the notes folder.
+    """
+    if not path:
+        target = root
+    else:
+        requested = Path(path)
+        if not requested.is_absolute():
+            raise ToolError(f"The path must be absolute, e.g. C:\\Users\\name\\Documents: {path}")
+        if any(part.startswith(".") for part in requested.parts):
+            raise ToolError(f"Hidden folders are off-limits: {path}")
+        target = requested
+
+    target = target.resolve()
+    if not target.exists():
+        raise ToolError("Files not found.")
+    if not target.is_dir():
+        raise ToolError(f"Not a folder: {path or root}")
+    return target
 
 
-def list_files(root: Path, path: str = ".") -> str:
-    """List every file under root as relative paths, one per line, sorted."""
-    target = safe_path(root, path)
+def walk_entries(target: Path, want_folders: bool) -> str:
+    """
+    Every file (or every folder) under target, as sorted relative paths, one per line.
 
+    Hidden entries are skipped, and hidden folders aren't searched at all. The list
+    stops at MAX_LIST_ENTRIES so a big folder can't flood the model's context.
+    """
     found = []
-    for entry in target.rglob("*"):
-        if not entry.is_file():
-            continue
-        # A symlink can live inside root but point outside it; read_file would refuse it,
-        # so don't advertise it either.
-        if not entry.resolve().is_relative_to(target):
-            continue
-        relative = entry.relative_to(target)
-        if is_hidden(relative):
-            continue
-        found.append(relative.as_posix())
+    truncated = False
+    for folder, subfolders, files in os.walk(target):
+        # Editing `subfolders` in place tells os.walk not to go into hidden folders.
+        subfolders[:] = [name for name in subfolders if not name.startswith(".")]
+        names = subfolders if want_folders else files
+        for name in names:
+            if name.startswith("."):
+                continue
+            entry = Path(folder) / name
+            # A symlink can live inside the folder but point outside it; don't advertise it.
+            if not entry.resolve().is_relative_to(target):
+                continue
+            found.append(entry.relative_to(target).as_posix())
+            if len(found) > MAX_LIST_ENTRIES:
+                truncated = True
+                break
+        if truncated:
+            break
 
     if not found:
-        return "No files found."
+        return "No folders found." if want_folders else "No files found."
 
-    found.sort()
+    found = sorted(found[:MAX_LIST_ENTRIES])
+    if truncated:
+        found.append(f"[Truncated: showing the first {MAX_LIST_ENTRIES} entries.]")
     return "\n".join(found)
+
+
+def list_files(root: Path, path: str | None = None) -> str:
+    """List every file under the notes folder, or under an absolute `path`."""
+    return walk_entries(list_target(root, path), want_folders=False)
+
+
+def list_folders(root: Path, path: str | None = None) -> str:
+    """List every folder under the notes folder, or under an absolute `path`."""
+    return walk_entries(list_target(root, path), want_folders=True)
 
 
 def create_folder(root: Path, path: str) -> str:
+    """Create a folder, along with any missing parent folders."""
     target = safe_path(root, path)
-    if target.exists():
+
+    if target.is_dir():
         raise ToolError("Folder already exists.")
-    elif not target.exists():
-        target.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        raise ToolError(f"A file already exists at that path: {path}")
 
-    return f"Created the folder: {target}"
-
-
-def list_folders(root: Path, path: str = ".") -> str:
-    """List every folder under root as relative paths, one per line, sorted."""
-    target = safe_path(root, path)
-
-    found = []
-    for entry in target.rglob("*"):
-        if not entry.is_dir():
-            continue
-        if not entry.resolve().is_relative_to(target):
-            continue
-        relative = entry.relative_to(target)
-        if is_hidden(relative):
-            continue
-        found.append(relative.as_posix())
-
-    if not found:
-        return "No files found."
-
-    found.sort()
-    return "\n".join(found)
+    target.mkdir(parents=True)
+    return f"Created the folder: {show_path(root, path, target)}"
 
 
 def copy_folder(root: Path, source: str, destination: str) -> str:
-    """Copy the source folder under root to a destination under root."""
+    """Copy a folder and everything in it. Refuses to overwrite or to copy into itself."""
     source_path = safe_path(root, source)
     destination_path = safe_path(root, destination)
 
     if not source_path.exists():
-        raise ToolError(f"Source path does not exist: {source_path}")
+        raise ToolError(f"Source path does not exist: {source}")
     if not source_path.is_dir():
-        raise ToolError(f"Source path is not a folder: {source_path}")
+        raise ToolError(f"Source path is not a folder: {source}")
 
-    destination_path.mkdir(parents=True, exist_ok=True)
+    final = final_destination(root, source_path, destination_path, destination)
+    if final.is_relative_to(source_path):
+        raise ToolError(f"Can't copy a folder into itself: {source} -> {destination}")
 
-    shutil.copytree(source_path, destination_path, dirs_exist_ok=True)
-
-    return f"Copied {source_path} to {destination_path}"
+    # copytree creates `final` and any missing parent folders.
+    shutil.copytree(source_path, final)
+    return f"Copied {show_path(root, source, source_path)} to {show_path(root, destination, final)}"
 
 
 def move_folder(root: Path, source: str, destination: str) -> str:
-    """Moves the source folder (under root) to a destionation (under root)"""
+    """Move a folder and everything in it. Refuses to overwrite or to move into itself."""
     source_path = safe_path(root, source)
     destination_path = safe_path(root, destination)
 
-    if not destination_path.exists():
-        raise ToolError(f"Destination path does not exist: {destination_path}")
-    if not destination_path.is_dir():
-        raise ToolError(f"Destination path is not a folder: {destination_path}")
+    if not source_path.exists():
+        raise ToolError(f"Source path does not exist: {source}")
+    if not source_path.is_dir():
+        raise ToolError(f"Source path is not a folder: {source}")
 
-    destination_path.mkdir(parents=True, exist_ok=True)
+    final = final_destination(root, source_path, destination_path, destination)
+    if final.is_relative_to(source_path):
+        raise ToolError(f"Can't move a folder into itself: {source} -> {destination}")
 
-    shutil.move(source_path, destination_path)
+    final.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(source_path, final)
+    return f"Moved {show_path(root, source, source_path)} to {show_path(root, destination, final)}"
 
-    return f"Moved {source_path} to {destination_path}"
+
+# Shared wording for the copy and move tools, so all four describe destinations the same way.
+DESTINATION_RULES = (
+    "If the destination is an existing folder, the source goes inside it. "
+    "Otherwise the destination becomes the new path, and missing parent folders are created. "
+    "Fails if something already exists at the final path."
+)
 
 
 def file_tools(notes_root: Path) -> list[Tool]:
@@ -209,7 +270,7 @@ def file_tools(notes_root: Path) -> list[Tool]:
             name="read_file",
             description=(
                 "Read one text file from the user's notes folder and return its contents. "
-                "Use a path exactly as list_files returns it."
+                "Use a path exactly as list_files returns it for the notes folder."
             ),
             parameters={
                 "type": "object",
@@ -226,19 +287,20 @@ def file_tools(notes_root: Path) -> list[Tool]:
         Tool(
             name="write_to_file",
             description=(
-                "Write text to a given file path in the users notes folder. Create the file and parent folders if do not already exist."
-                "Use file path exactly how it is given by the user."
+                "Write text to a file in the user's notes folder, replacing anything already in it. "
+                "Creates the file and its parent folders if they don't exist yet. "
+                "Use the file path exactly as the user gives it."
             ),
             parameters={
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Path of the file to be written to. Will be relative to the notes folder. e.g. reviews/superman.md",
+                        "description": "Path of the file to write, relative to the notes folder, e.g. reviews/superman.md.",
                     },
                     "content": {
                         "type": "string",
-                        "description": "Text to be written to the file."
+                        "description": "Text to write to the file."
                     },
                 },
                 "required": ["path", "content"],
@@ -250,19 +312,20 @@ def file_tools(notes_root: Path) -> list[Tool]:
         Tool(
             name="append_to_file",
             description=(
-                "Appends text to the end of a given file in the users notes folder."
-                "Use file path exactly how it is given by the user."
+                "Add text to the end of a file in the user's notes folder. "
+                "Creates the file and its parent folders if they don't exist yet. "
+                "Use the file path exactly as the user gives it."
             ),
             parameters={
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Path of the file to append to. Will be relative to the notes folder. e.g. reviews/spider-man.md."
+                        "description": "Path of the file to append to, relative to the notes folder, e.g. reviews/spider-man.md."
                     },
                     "content": {
                         "type": "string",
-                        "description": "Text to be appended to the file."
+                        "description": "Text to add to the end of the file."
                     },
                 },
                 "required": ["path", "content"]
@@ -274,15 +337,15 @@ def file_tools(notes_root: Path) -> list[Tool]:
         Tool(
             name="create_file",
             description=(
-                "Create an empty file at given location."
-                "Use location exactly as provided by the user."
+                "Create an empty file in the user's notes folder. "
+                "Use the location exactly as the user gives it."
             ),
             parameters={
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Path of the file to be created. Will be relative to the notes folder."
+                        "description": "Path of the file to create, relative to the notes folder."
                     },
                 },
                 "required": ["path"]
@@ -308,15 +371,15 @@ def file_tools(notes_root: Path) -> list[Tool]:
         Tool(
             name="create_folder",
             description=(
-                "Create an empty folder at a given location."
-                "Use location exactly as given by user."
+                "Create an empty folder in the user's notes folder. "
+                "Use the location exactly as the user gives it."
             ),
             parameters={
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Path of the folder to be created. Will be relative to the notes folder."
+                        "description": "Path of the folder to create, relative to the notes folder."
                     }
                 },
                 "required": ["path"],
@@ -328,47 +391,66 @@ def file_tools(notes_root: Path) -> list[Tool]:
         Tool(
             name="list_files",
             description=(
-                "List every file in the user's notes folder. Returns one relative path per line."
+                "List every file in a folder and its subfolders. Returns one path per line, "
+                "relative to the listed folder. Lists the user's notes folder unless given a path."
             ),
             parameters={
-                "type": "object", 
-                "properties": {}, 
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": (
+                            "Absolute path of the folder to list, e.g. C:\\Users\\jake\\Documents. "
+                            "Leave it out to list the notes folder."
+                        ),
+                    }
+                },
                 "required": []
             },
-            function=lambda: list_files(notes_root),
+            function=lambda path=None: list_files(notes_root, path),
             group="files",
             writes=False,
         ),
         Tool(
             name="list_folders",
             description=(
-                "List every folder in the user's notes folder. Returns one relative path per line."
+                "List every folder in a folder and its subfolders. Returns one path per line, "
+                "relative to the listed folder. Lists the user's notes folder unless given a path."
             ),
             parameters={
                 "type": "object",
-                "properties": {},
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": (
+                            "Absolute path of the folder to list, e.g. C:\\Users\\jake\\Documents. "
+                            "Leave it out to list the notes folder."
+                        ),
+                    }
+                },
                 "required": []
             },
-            function=lambda: list_folders(notes_root),
+            function=lambda path=None: list_folders(notes_root, path),
             group="files",
             writes=False,
         ),
         Tool(
             name="copy_folders",
             description=(
-                "Copies a folder from a source path to a destination path."
-                "Use paths exactly as given to you by the user."
+                "Copy a folder and everything in it to a new location in the user's notes folder. "
+                + DESTINATION_RULES + " "
+                "Use paths exactly as the user gives them."
             ),
             parameters={
                 "type": "object",
                 "properties": {
                     "source_path": {
                         "type": "string",
-                        "description": "The path of the source folder to be copied. Will be relative to the notes folder."
+                        "description": "Path of the folder to copy, relative to the notes folder."
                     },
                     "destination_path": {
                         "type": "string",
-                        "description": "The destination path to copy the folder to. Will be relative to the notes folder."
+                        "description": "Where to copy the folder to, relative to the notes folder."
                     }
                 },
                 "required": ["source_path", "destination_path"]
@@ -380,19 +462,20 @@ def file_tools(notes_root: Path) -> list[Tool]:
         Tool(
             name="move_folder",
             description=(
-                "Moves a folder from a source path to a destination path."
-                "Use paths exactly as given to you by the user."
+                "Move a folder and everything in it to a new location in the user's notes folder. "
+                + DESTINATION_RULES + " "
+                "Use paths exactly as the user gives them."
             ),
             parameters={
                 "type": "object",
                 "properties": {
                     "source_path": {
                         "type": "string",
-                        "description": "The path of the source folder to be moved. Will be relative to the notes folder."
+                        "description": "Path of the folder to move, relative to the notes folder."
                     },
                     "destination_path": {
                         "type": "string",
-                        "description": "The destination path to move the folder to. Will be relative to the notes folder."
+                        "description": "Where to move the folder to, relative to the notes folder."
                     }
                 },
                 "required": ["source_path", "destination_path"]
@@ -404,19 +487,20 @@ def file_tools(notes_root: Path) -> list[Tool]:
         Tool(
             name="copy_file",
             description=(
-                "Copies a file from a source path to a destination path."
-                "Use paths exactly as given to you by the user."
+                "Copy a file to a new location in the user's notes folder. "
+                + DESTINATION_RULES + " "
+                "Use paths exactly as the user gives them."
             ),
             parameters={
                 "type": "object",
                 "properties": {
                     "source_path": {
                         "type": "string",
-                        "description": "The path of the source file to be copied. Will be relative to the notes folder."
+                        "description": "Path of the file to copy, relative to the notes folder."
                     },
                     "destination_path": {
                         "type": "string",
-                        "description": "The path of the destination file to be copied to. Will be relative to the notes folder."
+                        "description": "Where to copy the file to, relative to the notes folder."
                     }
                 },
                 "required": ["source_path", "destination_path"]
@@ -428,19 +512,20 @@ def file_tools(notes_root: Path) -> list[Tool]:
         Tool(
             name="move_file",
             description=(
-                "Moves a file from a source path to a destination path."
-                "Use paths exactly as given to you by the user."
+                "Move a file to a new location in the user's notes folder. "
+                + DESTINATION_RULES + " "
+                "Use paths exactly as the user gives them."
             ),
             parameters={
                 "type": "object",
                 "properties": {
                     "source_path": {
                         "type": "string",
-                        "description": "The path of the source file to be moved. Will be relative to the notes folder."
+                        "description": "Path of the file to move, relative to the notes folder."
                     },
                     "destination_path": {
                         "type": "string",
-                        "description": "The destination path to move the file to. Will be relative to the notes folder."
+                        "description": "Where to move the file to, relative to the notes folder."
                     }
                 },
                 "required": ["source_path", "destination_path"]

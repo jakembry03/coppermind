@@ -9,9 +9,9 @@ import argparse
 import sys
 from importlib.metadata import version
 
-from coppermind.llm import LLMError
 from coppermind.agent import Agent, AgentError
 from coppermind.config import load_settings
+from coppermind.llm import LLMError
 from coppermind.tools import build_registry
 
 GREETING = "Hi, my name is Copper. How can I help you?"

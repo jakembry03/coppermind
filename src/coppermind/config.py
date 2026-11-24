@@ -9,7 +9,19 @@ from pathlib import Path
 DEFAULT_BASE_URL = "http://localhost:11434/v1"
 DEFAULT_MODEL = "qwen3:4b-instruct"
 DEFAULT_TIMEOUT_SECONDS = 120.0
-COPPER_NOTES_DIR = "sandbox/notes"
+
+# The repo root, found from this file's location: src/coppermind/config.py -> parents[2].
+# This only points at the repo when Copper is installed in editable mode (pip install -e .).
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# The only folder the file tools can change. It's always the repo's sandbox/notes,
+# no matter which directory `copper` is run from.
+NOTES_DIR = REPO_ROOT / "sandbox" / "notes"
+
+# Long-term memory lives in the user's home folder, outside the repo, so personal
+# facts never get committed and it works however Copper is installed.
+MEMORY_FILE = Path.home() / ".copper" / "memory.md"
+
 
 # frozen=True with a dataclass makes its instances immutable.
 # You cannot modify or delete the attributes once it is initialized.
@@ -29,5 +41,5 @@ def load_settings() -> Settings:
         base_url=os.environ.get("COPPER_BASE_URL", DEFAULT_BASE_URL).rstrip("/"),
         model=os.environ.get("COPPER_MODEL", DEFAULT_MODEL),
         timeout=float(os.environ.get("COPPER_TIMEOUT", DEFAULT_TIMEOUT_SECONDS)),
-        notes_dir=Path(os.environ.get("COPPER_NOTES_DIR", COPPER_NOTES_DIR)),
+        notes_dir=NOTES_DIR,
     )

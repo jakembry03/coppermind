@@ -1,1 +1,0 @@
-- Favorite superhero is Batman.

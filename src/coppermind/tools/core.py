@@ -1,19 +1,29 @@
 from datetime import datetime
 
+from coppermind import config
 from coppermind.tools.base import Tool
 
-from pathlib import Path
-
-MEMORY_FILE = Path(__file__).parent.parent / "memory" / "memory.md"
 
 def get_current_datetime() -> str:
     now = datetime.now().astimezone()
     return now.strftime("%A, %Y-%m-%d %H:%M:%S (UTC%z)")
 
 
+# Both memory functions look up config.MEMORY_FILE when they run (not at import),
+# so tests can point it at a temporary file with monkeypatch.
+def load_memory() -> str:
+    """Read the saved facts about the user, or "" if nothing has been saved yet."""
+    if not config.MEMORY_FILE.exists():
+        return ""
+    return config.MEMORY_FILE.read_text(encoding="utf-8")
+
+
 def save_memory(fact: str) -> str:
     """Append one fact about the user to long-term memory."""
-    with MEMORY_FILE.open("a", encoding="utf-8") as f:
+    # Keep each fact on one line so memory.md stays a clean bullet list.
+    fact = " ".join(fact.split())
+    config.MEMORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with config.MEMORY_FILE.open("a", encoding="utf-8") as f:
         f.write(f"- {fact}\n")
     return f"saved: {fact}"
 
@@ -31,7 +41,7 @@ def core_tools() -> list[Tool]:
         Tool(
             name="save_memory",
             description=(
-                "Save a lasting fact about Jake for future conversations: preferences, projects, people, decisions, or anything he asks you to remember."
+                "Save a lasting fact about Jake for future conversations: preferences, projects, people, decisions, or anything he asks you to remember. "
                 "Skip small talk, one-time requests, guesses, secrets, and facts you already know."
             ),
             parameters={
@@ -40,7 +50,7 @@ def core_tools() -> list[Tool]:
                     "fact": {
                         "type": "string",
                         "description": (
-                            "One short sentence about Jake that makes sense on its own."
+                            "One short sentence about Jake that makes sense on its own, "
                             "e.g. 'Prefers dark mode in code editors.'"
                         ),
                     }

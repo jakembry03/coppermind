@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+
 class ToolError(Exception):
     """A tool refused a request. the message is safe to show the model."""
 

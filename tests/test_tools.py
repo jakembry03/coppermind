@@ -1,24 +1,25 @@
+import re
 import sys
 
 import pytest
 
 from coppermind.tools import ToolError, build_registry
+from coppermind.tools import files as files_module
 from coppermind.tools.core import get_current_datetime
 from coppermind.tools.files import (
-    list_files,
-    list_folders, 
-    read_file,
+    append_to_file,
     copy_file,
-    move_file, 
-    write_to_file, 
-    append_to_file, 
+    copy_folder,
     create_file,
     delete_file,
+    list_files,
+    list_folders,
+    move_file,
+    move_folder,
+    read_file,
+    write_to_file,
 )
 
-import re
-
-from pathlib import Path
 
 @pytest.fixture
 def notes_root(tmp_path):
@@ -113,6 +114,9 @@ def test_registry_keys_match_tool_names(notes_root):
         "append_to_file", 
         "create_file",
         "delete_file",
+        "create_folder",
+        "copy_folders",
+        "move_folder",
         "save_memory",
     }
     for name, tool in registry.items():
@@ -177,7 +181,7 @@ def test_write_file(notes_root, tmp_path):
     file_to_write = "test_write.md"
     content = "Hello World!"
     expected_path = tmp_path / "notes" / "test_write.md"
-    file = write_to_file(notes_root, file_to_write, content)
+    write_to_file(notes_root, file_to_write, content)
 
     assert expected_path.is_file()
     assert expected_path.read_text(encoding="utf-8") == content
@@ -228,6 +232,136 @@ def test_move_file(notes_root, tmp_path):
 
     assert source_file.exists() == False
     assert destination_path.is_file()
+
+
+# --- No overwriting ---------------------------------------------------------
+
+@pytest.mark.parametrize("tool", [copy_file, move_file])
+def test_copy_and_move_file_refuse_to_overwrite(notes_root, tool):
+    (notes_root / "things" / "movie.md").write_text("keep me", encoding="utf-8")
+
+    with pytest.raises(ToolError, match="already exists"):
+        tool(notes_root, "ideas/movie.md", "things/movie.md")
+
+    assert (notes_root / "things" / "movie.md").read_text(encoding="utf-8") == "keep me"
+    assert (notes_root / "ideas" / "movie.md").is_file()
+
+
+def test_copy_file_into_an_existing_folder_keeps_the_name(notes_root):
+    assert copy_file(notes_root, "groceries.md", "things") == "Copied groceries.md to things/groceries.md"
+    assert (notes_root / "things" / "groceries.md").is_file()
+
+
+def test_move_file_creates_missing_parent_folders(notes_root):
+    move_file(notes_root, "groceries.md", "archive/2026/groceries.md")
+    assert (notes_root / "archive" / "2026" / "groceries.md").is_file()
+
+
+# --- Folders ----------------------------------------------------------------
+
+def test_move_folder_to_a_new_path_creates_missing_folders(notes_root):
+    result = move_folder(notes_root, "ideas", "archive/old-ideas")
+
+    assert result == "Moved ideas to archive/old-ideas"
+    assert (notes_root / "archive" / "old-ideas" / "movie.md").is_file()
+    assert not (notes_root / "ideas").exists()
+
+
+def test_move_folder_into_an_existing_folder(notes_root):
+    move_folder(notes_root, "ideas", "things")
+    assert (notes_root / "things" / "ideas" / "movie.md").is_file()
+
+
+def test_copy_folder_to_a_new_path(notes_root):
+    copy_folder(notes_root, "ideas", "backup/ideas")
+    assert (notes_root / "backup" / "ideas" / "movie.md").is_file()
+    assert (notes_root / "ideas" / "movie.md").is_file()
+
+
+@pytest.mark.parametrize("tool", [copy_folder, move_folder])
+@pytest.mark.parametrize(
+    "source, destination",
+    [
+        ("ideas", "ideas"),        # would land at ideas/ideas
+        ("ideas", "ideas/inner"),  # a new folder inside the source
+        (".", "ideas"),            # the whole notes folder into one of its own folders
+    ],
+)
+def test_folders_cannot_go_inside_themselves(notes_root, tool, source, destination):
+    with pytest.raises(ToolError, match="into itself"):
+        tool(notes_root, source, destination)
+    assert not (notes_root / "ideas" / "inner").exists()
+
+
+@pytest.mark.parametrize("tool", [copy_folder, move_folder])
+def test_folder_tools_refuse_to_overwrite(notes_root, tool):
+    (notes_root / "things" / "ideas").mkdir()
+    with pytest.raises(ToolError, match="already exists"):
+        tool(notes_root, "ideas", "things")
+
+
+def test_tools_answer_with_absolute_paths_when_given_absolute_paths(notes_root):
+    destination = notes_root.resolve() / "things" / "copy.md"
+    result = copy_file(notes_root, "groceries.md", str(destination))
+    assert result == f"Copied groceries.md to {destination}"
+
+
+# --- Create -----------------------------------------------------------------
+
+def test_create_file_on_an_existing_folder_says_folder(notes_root):
+    with pytest.raises(ToolError, match="folder already exists"):
+        create_file(notes_root, "ideas")
+
+
+def test_create_file_on_an_existing_file(notes_root):
+    with pytest.raises(ToolError, match="File already exists"):
+        create_file(notes_root, "groceries.md")
+
+
+def test_write_reports_a_summary_not_the_content(notes_root):
+    assert write_to_file(notes_root, "new.md", "Hello") == "Wrote 5 characters to new.md"
+    assert append_to_file(notes_root, "new.md", "!!") == "Appended 2 characters to new.md"
+
+
+# --- Listing ----------------------------------------------------------------
+
+def test_list_files_accepts_an_absolute_path_outside_the_notes_folder(notes_root, tmp_path):
+    other = tmp_path / "elsewhere"
+    other.mkdir()
+    (other / "a.txt").write_text("x", encoding="utf-8")
+
+    assert list_files(notes_root, str(other)) == "a.txt"
+
+
+def test_list_files_refuses_relative_paths(notes_root):
+    with pytest.raises(ToolError, match="absolute"):
+        list_files(notes_root, "ideas")
+
+
+def test_list_files_refuses_hidden_folders(notes_root, tmp_path):
+    with pytest.raises(ToolError, match="Hidden"):
+        list_files(notes_root, str(tmp_path / ".secrets"))
+
+
+def test_list_files_skips_hidden_folders_while_walking(notes_root):
+    (notes_root / ".git").mkdir()
+    (notes_root / ".git" / "config").write_text("x", encoding="utf-8")
+    assert ".git" not in list_files(notes_root)
+
+
+def test_list_files_stops_at_the_limit(notes_root, monkeypatch):
+    monkeypatch.setattr(files_module, "MAX_LIST_ENTRIES", 1)
+    assert list_files(notes_root).endswith("[Truncated: showing the first 1 entries.]")
+
+
+def test_list_folders_says_folders_when_empty(tmp_path):
+    assert list_folders(tmp_path) == "No folders found."
+
+
+def test_registry_list_tools_take_an_optional_path(notes_root, tmp_path):
+    registry = build_registry(notes_root)
+    assert registry["list_folders"].function(path=str(notes_root)) == "ideas\nstuff\nthings"
+    assert registry["list_folders"].function() == "ideas\nstuff\nthings"
 
 
 

@@ -1,6 +1,6 @@
-from coppermind.tools.base import Tool
-from pathlib import Path
 import requests
+
+from coppermind.tools.base import Tool
 
 BASE_URL = "https://krushcomics.com/api/v1/"
 

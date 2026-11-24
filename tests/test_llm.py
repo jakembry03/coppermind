@@ -1,7 +1,7 @@
+from pathlib import Path
+
 import httpx
 import pytest
-
-from pathlib import Path
 
 from coppermind import llm
 from coppermind.config import Settings
